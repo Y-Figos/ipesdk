@@ -1,0 +1,14 @@
+# Binaries
+*.exe
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Go build files
+/build/
+/bin/
+/dist/
+/*.exe
+*.log
