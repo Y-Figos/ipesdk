@@ -1,8 +1,9 @@
 package df
-import(
-	"strings"
+
+import (
 	"fmt"
 	"reflect"
+	"strings"
 )
 
 type ColumnInterface interface{
@@ -11,12 +12,22 @@ type ColumnInterface interface{
 	Len() int
 	DataSlice() []any
 	AppendValue(any) error
+	GetValue(int) any
+	EmptyClone() ColumnInterface 
 }
 
 type Column[T any] struct{
 	Header string
 	Data []T
 	GoType reflect.Type
+}
+
+func (c *Column[T]) EmptyClone() ColumnInterface{
+	return NewColumn(c.Header, make([]T, 0))
+}
+
+func (c *Column[T]) GetValue(index int) any {
+	return c.Data[index]
 }
 
 func (c Column[T]) HeaderName() string{
@@ -48,8 +59,8 @@ func (c *Column[T]) AppendValue(val any) error {
 	return nil
 }
 
-func NewColumn[T any](header string, data []T) Column[T]{
-	return Column[T]{
+func NewColumn[T any](header string, data []T) *Column[T]{
+	return &Column[T]{
 		Header: header,
 		Data: data,
 		GoType:  reflect.TypeOf((*T)(nil)).Elem(),
@@ -106,14 +117,15 @@ func (df *Dataframe) ColumnCount() int {
 	return columns
 }
 
-func(df *Dataframe) RowCount() int {
-	var maxRow int
-	for _, column := range df.Columns{
-		if len(column.DataSlice()) > maxRow {
-			maxRow = len(column.DataSlice())
-		}
-	}
-	return maxRow
+func (df *Dataframe) RowCount() int {
+    if len(df.Columns) == 0 {
+        return 0
+    }
+    // All columns same length - pick first
+    for _, col := range df.Columns {
+        return col.Len()
+    }
+    return 0
 }
 
 func (df *Dataframe) Row(i int) map[string]any{
@@ -124,5 +136,49 @@ func (df *Dataframe) Row(i int) map[string]any{
 	return row
 }
 
+func (df *Dataframe) RowView(i int) RowView {
+    return RowView{
+        Cols:  df.Columns,
+        Index: i,
+    }
+}
+
+func (df *Dataframe) Filter(predicate func(map[string]any) bool) *Dataframe {
+    newCols := make(map[string]ColumnInterface, len(df.Columns))
+    for name, col := range df.Columns {
+        newCols[name] = col.EmptyClone()
+    }
+    
+    rowCount := df.RowCount()
+    row := make(map[string]any, len(df.Columns))
+    
+    for i := 0; i < rowCount; i++ {
+        // Build row without copying full columns
+        for name, col := range df.Columns {
+            row[name] = col.GetValue(i)
+        }
+        
+        if predicate(row) {
+            for name, col := range newCols {
+                col.AppendValue(row[name])
+            }
+        }
+    }
+    return &Dataframe{
+        ColumnOrder: df.ColumnOrder,
+        Columns:     newCols,
+    }
+}
+
+type RowView struct {
+    Cols  map[string]ColumnInterface
+    Index int
+}
+
+func (r RowView) Get(col string) any {
+    return r.Cols[col].GetValue(r.Index)
+}
+
+ 
 
 

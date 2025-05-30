@@ -61,8 +61,8 @@ func (c *CSVReader) GetData() (*df.Dataframe, error) {
 	}
 	// Initialize all columns
 	for _, header := range headers {
-	col := df.NewColumn[string](header, []string{})
-	newDf.Columns[header] = &col // use pointer to satisfy interface
+	col := df.NewColumn[string](header, []string{}) // Chore: Create type assertion Logic
+	newDf.Columns[header] = col 
 	}
 	// Start workers
 	for i := 0; i < c.WorkerCount; i++ {
