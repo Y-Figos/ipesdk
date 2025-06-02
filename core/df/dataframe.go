@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"strconv"
 )
 
 type ColumnInterface interface{
@@ -51,12 +52,81 @@ func (c Column[T]) DataSlice() []any {
 }
 
 func (c *Column[T]) AppendValue(val any) error {
-	converted, ok := val.(T)
-	if !ok {
-		return fmt.Errorf("cannot convert %v (%T) to %v", val, val, c.GoType)
+	var target reflect.Type = c.GoType
+
+	var finalValue any
+	var err error
+
+	switch target.Kind() {
+	case reflect.Int:
+		finalValue, err = convertToInt(val)
+	case reflect.Float64:
+		finalValue, err = convertToFloat(val)
+	case reflect.Bool:
+		finalValue, err = convertToBool(val)
+	case reflect.String:
+		finalValue, err = convertToString(val)
+	default:
+		return fmt.Errorf("unsupported type: %v", target.Kind())
 	}
+
+	if err != nil {
+		return fmt.Errorf("cannot convert %v (%T) to %v: %w", val, val, target, err)
+	}
+
+	// Convert finalValue (any) into T using reflection
+	converted, ok := finalValue.(T)
+	if !ok {
+		return fmt.Errorf("conversion succeeded but type assertion to T failed: %T", finalValue)
+	}
+
 	c.Data = append(c.Data, converted)
 	return nil
+}
+func convertToInt(val any) (any, error) {
+	switch v := val.(type) {
+	case int:
+		return v, nil
+	case float64:
+		return int(v), nil
+	case string:
+		return strconv.Atoi(v)
+	default:
+		return nil, fmt.Errorf("cannot convert %T to int", val)
+	}
+}
+
+func convertToFloat(val any) (any, error) {
+	switch v := val.(type) {
+	case float64:
+		return v, nil
+	case int:
+		return float64(v), nil
+	case string:
+		return strconv.ParseFloat(v, 64)
+	default:
+		return nil, fmt.Errorf("cannot convert %T to float64", val)
+	}
+}
+
+func convertToBool(val any) (any, error) {
+	switch v := val.(type) {
+	case bool:
+		return v, nil
+	case string:
+		return strconv.ParseBool(v)
+	default:
+		return nil, fmt.Errorf("cannot convert %T to bool", val)
+	}
+}
+
+func convertToString(val any) (any, error) {
+	switch v := val.(type) {
+	case string:
+		return v, nil
+	default:
+		return fmt.Sprintf("%v", v), nil
+	}
 }
 
 func NewColumn[T any](header string, data []T) *Column[T]{
@@ -144,8 +214,10 @@ func (df *Dataframe) RowView(i int) RowView {
 }
 
 func (df *Dataframe) Filter(predicate func(map[string]any) bool) *Dataframe {
-    newCols := make(map[string]ColumnInterface, len(df.Columns))
-    for name, col := range df.Columns {
+    
+	newCols := make(map[string]ColumnInterface, len(df.Columns))
+    
+	for name, col := range df.Columns {
         newCols[name] = col.EmptyClone()
     }
     

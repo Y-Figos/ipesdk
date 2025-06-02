@@ -1,10 +1,11 @@
 # IPE SDK Alpha Todo
 
 * [X] Create Dataframe like type
-  * [ ] Create CSV Reader
+  * [X] Create CSV Reader
   * [ ] Implement Type Inference
   * [ ] String() Implementation
-  * [ ] filtermap
+  * [X] filter
+  * [ ] map
   * [ ] fill
   * [ ] select
   * [ ] merge

@@ -8,7 +8,7 @@ import (
 	_ "time"
 
 	"codehub-g.huawei.com/ProjectIPE/IPEGOCORE/core/adapters"
-	_ "codehub-g.huawei.com/ProjectIPE/IPEGOCORE/core/df"
+	_ "codehub-g.huawei.com/ProjectIPE/IPEGOCORE/core/df/infer"
 	_ "codehub-g.huawei.com/ProjectIPE/IPEGOCORE/core/engine"
 )
 func main()  {
@@ -30,26 +30,12 @@ func main()  {
 	}
 	log.Println(newdf.RowCount())
 
-	filtered := newdf.Filter(func(row map[string]any) bool {
-		return row["Board Name"] == "MRRU" 
-	}) 
+	// filtered := newdf.Filter(func(row map[string]any) bool { 
+	// 	return row["Board Name"] == "MRRU" || row["Board Name"] == "FModule"
+	// })
+	
+	
 
-	log.Println(filtered.RowCount())
-	// Memory after
-	// runtime.ReadMemStats(&memStatsEnd)
-	// elapsed := time.Since(start)
-
-	// fmt.Println("Execution Time:", elapsed)
-
-	// // Print memory stats (in MB)
-	// alloc := float64(memStatsEnd.Alloc) / (1024 * 1024)
-	// totalAlloc := float64(memStatsEnd.TotalAlloc) / (1024 * 1024)
-	// sys := float64(memStatsEnd.Sys) / (1024 * 1024)
-	// peak := float64(memStatsEnd.Alloc - memStatsStart.Alloc) / (1024 * 1024)
-
-	// fmt.Printf("Memory Allocated: %.2f MB\n", alloc)
-	// fmt.Printf("Total Memory Allocated: %.2f MB\n", totalAlloc)
-	// fmt.Printf("System Memory: %.2f MB\n", sys)
-	// fmt.Printf("Peak Usage During Call: %.2f MB\n", peak)
+	log.Println(newdf.Columns["Subrack No."].Type())
 
 }

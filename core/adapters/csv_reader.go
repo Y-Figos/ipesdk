@@ -5,9 +5,11 @@ import (
 	"io"
 	"log"
 	"os"
+	"reflect"
 	"sync"
 
 	"codehub-g.huawei.com/ProjectIPE/IPEGOCORE/core/df"
+	"codehub-g.huawei.com/ProjectIPE/IPEGOCORE/core/df/infer"
 	_ "codehub-g.huawei.com/ProjectIPE/IPEGOCORE/core/ports"
 )
 
@@ -38,7 +40,10 @@ func ColumnWriter(channel chan [][]string, headers []string, dataframe *df.Dataf
 
 func (c *CSVReader) GetData() (*df.Dataframe, error) {
 	file, err := os.Open(c.FilePath)
-	
+	samplesize := 100
+	sampleData := make([][]string,samplesize)
+	sampleMap := make(map[string][]string)
+	typeMap := make(map[string]reflect.Type)
 	mu := &sync.Mutex{}
 	if err != nil {
 		return nil, err
@@ -51,6 +56,7 @@ func (c *CSVReader) GetData() (*df.Dataframe, error) {
 	reader := csv.NewReader(file)
 	
 	headers, err := reader.Read()
+	
 	if err != nil {
 		log.Println(err)
 		return nil, err
@@ -60,11 +66,48 @@ func (c *CSVReader) GetData() (*df.Dataframe, error) {
 		Columns:     make(map[string]df.ColumnInterface),
 	}
 	// Initialize all columns
-	for _, header := range headers {
-	col := df.NewColumn[string](header, []string{}) // Chore: Create type assertion Logic
-	newDf.Columns[header] = col 
-	}
+	// for _, header := range headers {
+	// col := df.NewColumn[string](header, []string{}) // Chore: Create type assertion Logic
+	// newDf.Columns[header] = col 
+	// }
 	// Start workers
+	for i:=0; i < samplesize; i++{
+		records, err := reader.Read()
+		if err != nil{
+			log.Fatalln(err)
+			break
+		}
+		sampleData[i] = records
+	}
+
+	for _, row := range sampleData {
+	for columnIndex, value := range row {
+		if columnIndex >= len(headers) {
+			continue 
+		}
+		header := headers[columnIndex]
+		sampleMap[header] = append(sampleMap[header], value)
+	}
+	}
+
+	for index, column := range sampleMap {
+		typeMap[index] = infer.InferType(column)
+	}
+
+	for _, header := range headers {
+		newDf.Columns[header] = infer.CreateTypedColumn(header, typeMap[header])
+	}
+
+
+	for _, row := range sampleData{
+		for columnIndex, data := range row{
+			newDf.Columns[headers[columnIndex]].AppendValue(data)
+		}
+	}
+		
+		
+	
+
 	for i := 0; i < c.WorkerCount; i++ {
 		wg.Add(1)
 		go ColumnWriter(batchChannel, headers, &newDf, &wg, mu)
