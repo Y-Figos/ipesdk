@@ -2,10 +2,10 @@
 
 * [X] Create Dataframe like type
   * [X] Create CSV Reader
-  * [ ] Implement Type Inference
+  * [X] Implement Type Inference
   * [ ] String() Implementation
   * [X] filter
-  * [ ] map
+  * [X] map
   * [ ] fill
   * [ ] select
   * [ ] merge
@@ -13,3 +13,7 @@
 * [ ] Implement Engine v1 (Run selected pipelines dynamically)
 * [ ] Implement pipeline v1 reader (detect lua files dynamically)
 * [ ] Create CLI for running pipelines
+
+# Chores
+
+* [ ] Refactor CSV Reader Type Inference to be more reusable across other adapters

@@ -2,9 +2,10 @@ package df
 
 import (
 	"fmt"
+	"log"
 	"reflect"
-	"strings"
 	"strconv"
+	"strings"
 )
 
 type ColumnInterface interface{
@@ -15,6 +16,7 @@ type ColumnInterface interface{
 	AppendValue(any) error
 	GetValue(int) any
 	EmptyClone() ColumnInterface 
+	Map(map[any]any, ...string) ColumnInterface
 }
 
 type Column[T any] struct{
@@ -66,6 +68,8 @@ func (c *Column[T]) AppendValue(val any) error {
 		finalValue, err = convertToBool(val)
 	case reflect.String:
 		finalValue, err = convertToString(val)
+	case reflect.Interface:
+		finalValue = val
 	default:
 		return fmt.Errorf("unsupported type: %v", target.Kind())
 	}
@@ -135,6 +139,31 @@ func NewColumn[T any](header string, data []T) *Column[T]{
 		Data: data,
 		GoType:  reflect.TypeOf((*T)(nil)).Elem(),
 	}
+}
+
+func (c *Column[T]) Map(mapper map[any]any, optional_header ...string) ColumnInterface{
+	var zero T
+	header := c.Header + "_mapped"
+	if len(optional_header) > 0{
+		header = optional_header[0]
+	}
+
+	newColumn := NewColumn(header, []any{})
+		for _ ,data := range c.DataSlice() {
+			if mapper[data] != nil{
+				err := newColumn.AppendValue(mapper[data])
+				if err != nil{
+					log.Fatalln(err)
+				}
+			}else {
+
+				err := newColumn.AppendValue(zero)
+				if err != nil{
+					log.Fatalln(err)
+				}
+			}
+		}
+	return newColumn
 }
 
 func (c Column[T]) String() string {
@@ -251,6 +280,6 @@ func (r RowView) Get(col string) any {
     return r.Cols[col].GetValue(r.Index)
 }
 
- 
+
 
 

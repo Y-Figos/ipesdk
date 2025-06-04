@@ -19,7 +19,7 @@ func main()  {
 	// runtime.ReadMemStats(&memStatsStart)
 
 	teste := adapters.CSVReader{
-		FilePath:    "D:\\Huawei Projects\\InvToolProject\\Files\\BLZ\\Inventory_Board_20250505_102510.csv", 
+		FilePath:    "D:\\Huawei Projects\\1- Project IPE\\Files\\users_100.csv", 
 		BatchSize:   10000,
 		WorkerCount: 8,
 	}
@@ -30,12 +30,13 @@ func main()  {
 	}
 	log.Println(newdf.RowCount())
 
-	// filtered := newdf.Filter(func(row map[string]any) bool { 
-	// 	return row["Board Name"] == "MRRU" || row["Board Name"] == "FModule"
-	// })
+	filtered := newdf.Filter(func(row map[string]any) bool { 
+		return row["id"] == 1
+	})
 	
+	filtered.Columns["TestColumn"] = filtered.Columns["id"].Map(map[any]any{1:"FIRST USER"}, "TestColumn")
 	
-
-	log.Println(newdf.Columns["Subrack No."].Type())
+	log.Println(filtered.Columns["name"])
+	log.Println(filtered.Columns["TestColumn"])
 
 }

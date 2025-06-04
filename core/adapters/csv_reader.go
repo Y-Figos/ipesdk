@@ -14,34 +14,33 @@ import (
 )
 
 type CSVReader struct {
-	FilePath string
-	BatchSize int
+	FilePath    string
+	BatchSize   int
 	WorkerCount int
 }
 
-func ColumnWriter(channel chan [][]string, headers []string, dataframe *df.Dataframe , wg *sync.WaitGroup,mu *sync.Mutex){
+func ColumnWriter(channel chan [][]string, headers []string, dataframe *df.Dataframe, wg *sync.WaitGroup, mu *sync.Mutex) {
 	defer wg.Done()
-	
-	for batch := range channel{
+
+	for batch := range channel {
 		mu.Lock()
-		for _, row := range batch{
-			for columnIndex, data := range row{
-				
+		for _, row := range batch {
+			for columnIndex, data := range row {
+
 				dataframe.Columns[headers[columnIndex]].AppendValue(data)
-				
+
 			}
 		}
-		mu.Unlock() 
-		
-	}
-	
-}
+		mu.Unlock()
 
+	}
+
+}
 
 func (c *CSVReader) GetData() (*df.Dataframe, error) {
 	file, err := os.Open(c.FilePath)
 	samplesize := 100
-	sampleData := make([][]string,samplesize)
+	sampleData := make([][]string, samplesize)
 	sampleMap := make(map[string][]string)
 	typeMap := make(map[string]reflect.Type)
 	mu := &sync.Mutex{}
@@ -49,14 +48,14 @@ func (c *CSVReader) GetData() (*df.Dataframe, error) {
 		return nil, err
 	}
 	defer file.Close()
-	
+
 	batchChannel := make(chan [][]string, 100)
 	var wg sync.WaitGroup
-	
+
 	reader := csv.NewReader(file)
-	
+
 	headers, err := reader.Read()
-	
+
 	if err != nil {
 		log.Println(err)
 		return nil, err
@@ -65,15 +64,10 @@ func (c *CSVReader) GetData() (*df.Dataframe, error) {
 		ColumnOrder: headers,
 		Columns:     make(map[string]df.ColumnInterface),
 	}
-	// Initialize all columns
-	// for _, header := range headers {
-	// col := df.NewColumn[string](header, []string{}) // Chore: Create type assertion Logic
-	// newDf.Columns[header] = col 
-	// }
-	// Start workers
-	for i:=0; i < samplesize; i++{
+
+	for i := 0; i < samplesize; i++ {
 		records, err := reader.Read()
-		if err != nil{
+		if err != nil {
 			log.Fatalln(err)
 			break
 		}
@@ -81,32 +75,28 @@ func (c *CSVReader) GetData() (*df.Dataframe, error) {
 	}
 
 	for _, row := range sampleData {
-	for columnIndex, value := range row {
-		if columnIndex >= len(headers) {
-			continue 
+		for columnIndex, value := range row {
+			if columnIndex >= len(headers) {
+				continue
+			}
+			header := headers[columnIndex]
+			sampleMap[header] = append(sampleMap[header], value)
 		}
-		header := headers[columnIndex]
-		sampleMap[header] = append(sampleMap[header], value)
-	}
 	}
 
 	for index, column := range sampleMap {
-		typeMap[index] = infer.InferType(column)
+		typeMap[index] = infer.InferTypeFromSlice(column)
 	}
 
 	for _, header := range headers {
 		newDf.Columns[header] = infer.CreateTypedColumn(header, typeMap[header])
 	}
 
-
-	for _, row := range sampleData{
-		for columnIndex, data := range row{
+	for _, row := range sampleData {
+		for columnIndex, data := range row {
 			newDf.Columns[headers[columnIndex]].AppendValue(data)
 		}
 	}
-		
-		
-	
 
 	for i := 0; i < c.WorkerCount; i++ {
 		wg.Add(1)
@@ -129,12 +119,12 @@ func (c *CSVReader) GetData() (*df.Dataframe, error) {
 			batch = append(batch, record)
 		}
 		if len(batch) > 0 {
-        batchChannel <- batch
-    	}
+			batchChannel <- batch
+		}
 		if len(batch) == 0 {
 			break
 		}
-		
+
 	}
 
 	close(batchChannel)
