@@ -6,8 +6,7 @@
   * [ ] String() Implementation
   * [X] filter
   * [X] map
-  * [ ] fill
-  * [ ] select
+  * [ ] unique
   * [ ] merge
 * [ ] Create Basic input, output ports and adapters (XLSX, csv)
 * [ ] Implement Engine v1 (Run selected pipelines dynamically)
