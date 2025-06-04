@@ -17,9 +17,10 @@ type ColumnInterface interface{
 	GetValue(int) any
 	EmptyClone() ColumnInterface 
 	Map(map[any]any, ...string) ColumnInterface
+	Unique() []any
 }
 
-type Column[T any] struct{
+type Column[T comparable] struct{
 	Header string
 	Data []T
 	GoType reflect.Type
@@ -133,7 +134,7 @@ func convertToString(val any) (any, error) {
 	}
 }
 
-func NewColumn[T any](header string, data []T) *Column[T]{
+func NewColumn[T comparable](header string, data []T) *Column[T]{
 	return &Column[T]{
 		Header: header,
 		Data: data,
@@ -165,6 +166,20 @@ func (c *Column[T]) Map(mapper map[any]any, optional_header ...string) ColumnInt
 		}
 	return newColumn
 }
+
+
+func (c *Column[T]) Unique() []any{
+	seen :=  make(map[T]struct{})
+	var unique []any 
+	for _, value := range c.Data {
+		if _, exist := seen[value]; !exist {
+			seen[value] = struct{}{}
+			unique = append(unique, value)
+		}
+	}
+	return unique
+}
+
 
 func (c Column[T]) String() string {
 	var column strings.Builder
