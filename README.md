@@ -6,6 +6,7 @@
   * [ ] String() Implementation
   * [X] filter
   * [X] map
+  * [ ] apply
   * [ ] unique
   * [ ] merge
 * [ ] Create Basic input, output ports and adapters (XLSX, csv)
