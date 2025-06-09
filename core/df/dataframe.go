@@ -17,7 +17,8 @@ type ColumnInterface interface{
 	GetValue(int) any
 	EmptyClone() ColumnInterface 
 	Map(map[any]any, ...string) ColumnInterface
-	Unique() []any
+	Unique() []any 
+	Apply(func(any) any, ...string ) ColumnInterface
 }
 
 type Column[T comparable] struct{
@@ -167,6 +168,18 @@ func (c *Column[T]) Map(mapper map[any]any, optional_header ...string) ColumnInt
 	return newColumn
 }
 
+func (c* Column[T]) Apply(predicate func(data any) any, optional_header ...string) ColumnInterface{
+	header := "new_" + c.Header
+	data := make([]any, len(c.Data))
+	if len(optional_header) > 0 {
+		header = optional_header[0]
+	}
+	for index, value := range c.Data {
+		newValue := predicate(value)
+		data[index] = newValue
+	}
+	return NewColumn(header, data)
+}
 
 func (c *Column[T]) Unique() []any{
 	seen :=  make(map[T]struct{})
