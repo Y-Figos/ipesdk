@@ -37,6 +37,20 @@ func ColumnWriter(channel chan [][]string, headers []string, dataframe *df.Dataf
 
 }
 
+func NewCSVReaderWithOptions(filePath string, batchSize int, workerCount int) *CSVReader {
+	if batchSize <= 0 {
+		batchSize = 100
+	}
+	if workerCount <= 0 {
+		workerCount = 4
+	}
+	return &CSVReader{
+		FilePath:    filePath,
+		BatchSize:   batchSize,
+		WorkerCount: workerCount,
+	}
+}
+
 func (c *CSVReader) GetData() (*df.Dataframe, error) {
 	file, err := os.Open(c.FilePath)
 	samplesize := 100
