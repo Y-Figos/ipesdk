@@ -2,7 +2,6 @@ package infer
 
 import (
 	"reflect"
-
 	"codehub-g.huawei.com/ProjectIPE/IPEGOCORE/core/df"
 )
 

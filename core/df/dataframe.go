@@ -6,6 +6,8 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"github.com/yuin/gopher-lua"
+	"codehub-g.huawei.com/ProjectIPE/IPEGOCORE/utils"
 )
 
 type ColumnInterface interface{
@@ -19,6 +21,7 @@ type ColumnInterface interface{
 	Map(map[any]any, ...string) ColumnInterface
 	Unique() []any 
 	Apply(func(any) any, ...string ) ColumnInterface
+	LuaApply( *lua.LState, *lua.LFunction, ...string ) (ColumnInterface, error)
 }
 
 type Column[T comparable] struct{
@@ -181,6 +184,30 @@ func (c* Column[T]) Apply(predicate func(data any) any, optional_header ...strin
 	return NewColumn(header, data)
 }
 
+func (c* Column[T]) LuaApply(L *lua.LState, predicate *lua.LFunction, optional_header ...string) (ColumnInterface, error){
+	data := make([]any, len(c.Data))
+	header := "new_" + c.Header
+	if len(optional_header) > 0 {
+		header = optional_header[0]
+	}
+	for i, value := range c.Data{
+		luaArg := utils.ConvertAnytoLuaType(value)
+		err := L.CallByParam(lua.P{
+			Fn: predicate,
+			NRet: 1,
+			Protect: true,
+		}, luaArg)
+		if err != nil{
+			return nil, fmt.Errorf("error applying function at row %d: %v", i, err)
+		}
+		result := L.Get(-1)
+		L.Pop(1)
+
+		data[i] = utils.ConvertLuaTypeToGoType(result)
+	}
+	return NewColumn(header, data), nil
+}
+
 func (c *Column[T]) Unique() []any{
 	seen :=  make(map[T]struct{})
 	var unique []any 
@@ -297,6 +324,51 @@ func (df *Dataframe) Filter(predicate func(map[string]any) bool) *Dataframe {
         ColumnOrder: df.ColumnOrder,
         Columns:     newCols,
     }
+}
+
+func (df *Dataframe) FilterLua(L *lua.LState, fn *lua.LFunction) (*Dataframe, error) {
+	newCols := make(map[string]ColumnInterface, len(df.Columns))
+	for name, col := range df.Columns {
+		newCols[name] = col.EmptyClone()
+	}
+
+	rowCount := df.RowCount()
+
+	for i := 0; i < rowCount; i++ {
+		luaRow := L.NewTable()
+
+		// Construct row table for Lua
+		for name, col := range df.Columns {
+			goVal := col.GetValue(i)
+			luaVal := utils.ConvertAnytoLuaType(goVal)
+			L.SetField(luaRow, name, luaVal)
+		}
+
+		// Call the Lua function with row table
+		err := L.CallByParam(lua.P{
+			Fn:      fn,
+			NRet:    1,
+			Protect: true,
+		}, luaRow)
+		if err != nil {
+			return nil, fmt.Errorf("error in filter predicate at row %d: %v", i, err)
+		}
+
+		// Get and evaluate return value
+		ret := L.Get(-1)
+		L.Pop(1) // pop result from stack
+
+		if lua.LVAsBool(ret) {
+			for name, col := range newCols {
+				col.AppendValue(df.Columns[name].GetValue(i))
+			}
+		}
+	}
+
+	return &Dataframe{
+		ColumnOrder: df.ColumnOrder,
+		Columns:     newCols,
+	}, nil
 }
 
 type RowView struct {
