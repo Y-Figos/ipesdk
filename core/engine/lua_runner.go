@@ -1,23 +1,15 @@
 package engine
 
 import (
-	"log"
 	"github.com/yuin/gopher-lua"
+	"codehub-g.huawei.com/ProjectIPE/IPEGOCORE/internal"
 )
 
-func greetings(L *lua.LState) int {
-	name := L.ToString(1) 
-	L.Push(lua.LString("Hello, " + name)) // Whats is this push function? and why cant i just push a normal string?
-	return 1 
-}
+func CreateLuaEnv(L *lua.LState) {
+	
+	internal.RegisterReaderType(L)
+	internal.RegisterDataFrameType(L)
+	internal.RegisterColumnType(L)
+	L.SetGlobal("new_reader", L.NewFunction(internal.RegisterCSVReader))
 
-func Teste(path string) {
-	L := lua.NewState()
-	defer L.Close()
-
-	L.SetGlobal("greetings", L.NewFunction(greetings)) // How exactly the greetings function getr the LState?
-	// Load the Lua script
-	if err := L.DoFile(path); err != nil {
-        log.Fatal(err)
-    }
 }
