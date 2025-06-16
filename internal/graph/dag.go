@@ -11,7 +11,7 @@ import (
 type DAG struct {
 	Nodes map[string]*NodeModule
 	Edges map[string][]string
-	Sorted []*NodeModule     
+	Sorted [][]*NodeModule     
 }
 
 func BuildGraph(manifest *fh.Manifest) *DAG {
@@ -44,7 +44,7 @@ func BuildGraph(manifest *fh.Manifest) *DAG {
 		}
 		}
 	}
-
+	dag.Sorted = dag.exectutionLayers()
 	return &dag
 }
 
@@ -128,7 +128,7 @@ func (dag *DAG) exectutionLayers() [][]*NodeModule {
 
 		layers = append(layers, currentLayer)
 	}
-
+	dag.Sorted = layers
 	return layers
 
 } 
@@ -140,7 +140,7 @@ func (dag *DAG) Run() ModuleStatus {
 		return StatusFailed
 	}
 
-	for _, layer := range dag.exectutionLayers(){
+	for _, layer := range dag.Sorted{
 		wg := sync.WaitGroup{} 
 		statusChan := make(chan ModuleStatus, len(layer))
 		for _, node := range layer {
