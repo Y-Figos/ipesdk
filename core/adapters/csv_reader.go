@@ -82,7 +82,7 @@ func (c *CSVReader) GetData() (*df.Dataframe, error) {
 	for i := 0; i < samplesize; i++ {
 		records, err := reader.Read()
 		if err != nil {
-			log.Fatalln(err)
+			log.Println(err)
 			break
 		}
 		sampleData[i] = records

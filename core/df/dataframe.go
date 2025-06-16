@@ -158,13 +158,13 @@ func (c *Column[T]) Map(mapper map[any]any, optional_header ...string) ColumnInt
 			if mapper[data] != nil{
 				err := newColumn.AppendValue(mapper[data])
 				if err != nil{
-					log.Fatalln(err)
+					log.Println(err)
 				}
 			}else {
 
 				err := newColumn.AppendValue(zero)
 				if err != nil{
-					log.Fatalln(err)
+					log.Println(err)
 				}
 			}
 		}
