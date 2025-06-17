@@ -5,36 +5,21 @@ import (
 	"io"
 	"log"
 	"os"
-	"reflect"
-	"sync"
-
+	_ "reflect"
+	"errors"
 	"codehub-g.huawei.com/ProjectIPE/IPEGOCORE/core/df"
-	"codehub-g.huawei.com/ProjectIPE/IPEGOCORE/core/df/infer"
+	_ "codehub-g.huawei.com/ProjectIPE/IPEGOCORE/core/df/infer"
 	_ "codehub-g.huawei.com/ProjectIPE/IPEGOCORE/core/ports"
 )
 
 type CSVReader struct {
 	FilePath    string
+	File        *os.File
+	Reader      *csv.Reader
 	BatchSize   int
 	WorkerCount int
-}
-
-func ColumnWriter(channel chan [][]string, headers []string, dataframe *df.Dataframe, wg *sync.WaitGroup, mu *sync.Mutex) {
-	defer wg.Done()
-
-	for batch := range channel {
-		mu.Lock()
-		for _, row := range batch {
-			for columnIndex, data := range row {
-
-				dataframe.Columns[headers[columnIndex]].AppendValue(data)
-
-			}
-		}
-		mu.Unlock()
-
-	}
-
+	SkipRow     int
+	BaseInput   *BaseInput
 }
 
 func NewCSVReaderWithOptions(filePath string, batchSize int, workerCount int) *CSVReader {
@@ -45,92 +30,111 @@ func NewCSVReaderWithOptions(filePath string, batchSize int, workerCount int) *C
 		workerCount = 4
 	}
 	return &CSVReader{
+		BaseInput: &BaseInput{},
 		FilePath:    filePath,
 		BatchSize:   batchSize,
 		WorkerCount: workerCount,
 	}
 }
 
-func (c *CSVReader) GetData() (*df.Dataframe, error) {
+func (c *CSVReader) Open() error {
 	file, err := os.Open(c.FilePath)
-	samplesize := 100
-	sampleData := make([][]string, samplesize)
-	sampleMap := make(map[string][]string)
-	typeMap := make(map[string]reflect.Type)
-	mu := &sync.Mutex{}
 	if err != nil {
-		return nil, err
+		return err
 	}
-	defer file.Close()
+	c.File = file
+	c.Reader = csv.NewReader(c.File)
+	return nil
+}
 
-	batchChannel := make(chan [][]string, 100)
-	var wg sync.WaitGroup
+func (c *CSVReader) Close() error {
+	if c.File != nil {
+		err := c.File.Close()
+		c.File = nil
+		return err
+	}
+	return nil
+}
 
-	reader := csv.NewReader(file)
-
-	headers, err := reader.Read()
-
+func (c *CSVReader) GetHeaders() ([]string, error) {
+	headers, err := c.Reader.Read()
 	if err != nil {
 		log.Println(err)
 		return nil, err
 	}
+	return headers, nil
+}
+func (c *CSVReader) ReadSample(n int) ([][]string, error) {
+	sampleData := make([][]string, n)
+	for i := 0; i < n; i++ {
+		records, err := c.Reader.Read()
+		if err != nil {
+			return nil, err
+		}
+		sampleData[i] = records
+	}
+	return sampleData, nil
+}
+
+func (c *CSVReader) ReadBatch(n int) ([][]string, error) {
+	var batch [][]string
+
+	for i := 0; i < n; i++ {
+		record, err := c.Reader.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			log.Printf("read error: %v", err)
+			return nil, err
+		}
+		batch = append(batch, record)
+	}
+
+	return batch, nil
+
+}
+
+func (c *CSVReader) GetData() (*df.Dataframe, error) {
+	
+	err := c.Open()
+	if err != nil {
+		return nil, err
+	}
+	samplesize := 100
+	batchChannel := make(chan [][]string, 100)
+	defer c.Close()
+	if c.BaseInput == nil {
+		return nil, errors.New("BaseInput is not initialized")
+	}
+	headers, err := c.GetHeaders()
+	if err != nil {
+		c.Close()
+		log.Println(err)
+		return nil, err
+	}
+
 	newDf := df.Dataframe{
 		ColumnOrder: headers,
 		Columns:     make(map[string]df.ColumnInterface),
 	}
 
-	for i := 0; i < samplesize; i++ {
-		records, err := reader.Read()
-		if err != nil {
-			log.Println(err)
-			break
-		}
-		sampleData[i] = records
+	sampleData, err := c.ReadSample(samplesize)
+	if err != nil {
+		return nil, err
 	}
 
-	for _, row := range sampleData {
-		for columnIndex, value := range row {
-			if columnIndex >= len(headers) {
-				continue
-			}
-			header := headers[columnIndex]
-			sampleMap[header] = append(sampleMap[header], value)
-		}
-	}
+	//Create BaseInput and create TyperInferer method
+	c.BaseInput.SetupSchemaFromSample(headers, sampleData, &newDf)
 
-	for index, column := range sampleMap {
-		typeMap[index] = infer.InferTypeFromSlice(column)
-	}
-
-	for _, header := range headers {
-		newDf.Columns[header] = infer.CreateTypedColumn(header, typeMap[header])
-	}
-
-	for _, row := range sampleData {
-		for columnIndex, data := range row {
-			newDf.Columns[headers[columnIndex]].AppendValue(data)
-		}
-	}
-
-	for i := 0; i < c.WorkerCount; i++ {
-		wg.Add(1)
-		go ColumnWriter(batchChannel, headers, &newDf, &wg, mu)
-	}
+	//Create BaseInput and create start Workers method
+	wg := c.BaseInput.StartWorkers(batchChannel, headers, &newDf, c.WorkerCount)
 
 	// Read and send batches
 	for {
-		var batch [][]string
-
-		for i := 0; i < c.BatchSize; i++ {
-			record, err := reader.Read()
-			if err == io.EOF {
-				break
-			}
-			if err != nil {
-				log.Printf("read error: %v", err)
-				continue
-			}
-			batch = append(batch, record)
+		batch, err := c.ReadBatch(c.BatchSize)
+		if err != nil {
+			return nil, err
 		}
 		if len(batch) > 0 {
 			batchChannel <- batch
@@ -138,11 +142,9 @@ func (c *CSVReader) GetData() (*df.Dataframe, error) {
 		if len(batch) == 0 {
 			break
 		}
-
 	}
 
 	close(batchChannel)
 	wg.Wait()
-	log.Println("All workers done")
 	return &newDf, nil
 }

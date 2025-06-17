@@ -9,8 +9,8 @@
   * [X] apply
   * [X] unique
 * [ ] Create Basic input, output ports and adapters (XLSX, csv)
-* [ ] Implement Engine v1 (Run selected pipelines dynamically)
-* [ ] Implement pipeline v1 reader (detect lua files dynamically)
+* [X] Implement Engine v1 (Run selected pipelines dynamically)
+* [X] Implement pipeline v1 reader (detect lua files dynamically)
 * [ ] Create CLI for running pipelines
 
 # Chores
