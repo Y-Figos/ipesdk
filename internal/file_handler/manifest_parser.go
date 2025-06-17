@@ -18,6 +18,7 @@ type Node struct {
 	Adapter string `json:"adapter"`
 	Export string `json:"export_as"`
 	Depends []string `json:"depends"`
+	Args map[string]any `json:"args"`
 }
 
 type Manifest struct {

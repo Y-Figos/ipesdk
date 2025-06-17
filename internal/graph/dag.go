@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"sync"
 	fh "codehub-g.huawei.com/ProjectIPE/IPEGOCORE/internal/file_handler"
+	
 )
 
 type DAG struct {
@@ -22,6 +23,8 @@ func BuildGraph(manifest *fh.Manifest) *DAG {
 	for _, node := range manifest.NodeList{
 		newModule := &NodeModule{
 			ModuleName: node.Id,
+			Adapter: node.Adapter,
+			Args: node.Args,
 			ScriptPath: filepath.Join(root,"modules", node.Id, "script.lua"),
 			DataOutput: OutputType(node.Export),
 		}

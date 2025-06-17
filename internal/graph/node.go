@@ -3,6 +3,7 @@ package graph
 import (
 	"codehub-g.huawei.com/ProjectIPE/IPEGOCORE/core/df"
 	"codehub-g.huawei.com/ProjectIPE/IPEGOCORE/core/engine"
+	"codehub-g.huawei.com/ProjectIPE/IPEGOCORE/core/adapters"
 	"github.com/yuin/gopher-lua"
 	"log"
 )
@@ -31,17 +32,18 @@ type NodeModule struct{
 	ScriptPath string 
 	Depends []*NodeModule
 	Children []*NodeModule
- 	DataOutput OutputType 
-	Args []string
+ 	DataOutput OutputType
+	Adapter string
+	Args map[string]any
 	Payload *df.Dataframe
 	Status ModuleStatus
 }
 
-func (nm *NodeModule) registerDeps(L *lua.LState, dependecy *NodeModule ) {
+func (nm *NodeModule) registerPayload(L *lua.LState, module *NodeModule ) {
 	ud := L.NewUserData()
-	ud.Value = dependecy.Payload
+	ud.Value = module.Payload
 	L.SetMetatable(ud, L.GetTypeMetatable("dataframe"))
-	L.SetGlobal("payload_" + dependecy.ModuleName, ud)
+	L.SetGlobal("payload_" + module.ModuleName, ud)
 }
 
 func (nm *NodeModule) Run() ModuleStatus {
@@ -50,6 +52,27 @@ func (nm *NodeModule) Run() ModuleStatus {
 	L := lua.NewState()
 	defer L.Close()
 	engine.CreateLuaEnv(L)
+
+	if nm.Adapter != ""{
+		factory, ok := adapters.InputAdapterRegistry[nm.Adapter]
+		if !ok {
+			log.Printf("Adapter %v of %v do not exist", nm.Adapter, nm.ModuleName)
+			return StatusFailed
+		}
+		adapter, err := factory(nm.Args)
+		if err != nil {
+			log.Printf("Adapter %v of %v: Error while creating adapter - %v ", nm.Adapter, nm.ModuleName, err)
+			return StatusFailed
+		}
+		df, err := adapter.GetData()
+		if err != nil {
+			log.Printf("Adapter %v of %v: Error while creating adapter - %v ", nm.Adapter, nm.ModuleName, err)
+			return StatusFailed
+		}
+		nm.Payload = df
+		nm.registerPayload(L, nm)
+	}
+
 	for _, dependency := range nm.Depends {
 		if dependency.Status == StatusFailed {
 			log.Printf("dependecy %v of %v did not succeed",dependency.ModuleName, nm.ModuleName)
@@ -57,7 +80,7 @@ func (nm *NodeModule) Run() ModuleStatus {
 			return StatusFailed
 		}
 		if dependency.Payload != nil {
-			nm.registerDeps(L, dependency)
+			nm.registerPayload(L, dependency)
 		}
 	}
 
