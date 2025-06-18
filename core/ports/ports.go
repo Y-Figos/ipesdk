@@ -12,3 +12,10 @@ type InputInterface interface{
 	Close() error
 	GetHeaders() ([]string, error)
 }
+type OutputInterface interface{
+	ExportData() error // The Module calls this
+	WriteHeaders() error
+	WriteData() error
+	Open() error
+	Close() error
+}

@@ -1,18 +1,32 @@
 package adapters
 
-import(
-	"codehub-g.huawei.com/ProjectIPE/IPEGOCORE/core/ports"
+import (
 	"fmt"
+
+	"codehub-g.huawei.com/ProjectIPE/IPEGOCORE/core/df"
+	"codehub-g.huawei.com/ProjectIPE/IPEGOCORE/core/ports"
 )
 
 type InputAdapterFactory func(args map[string]any) (ports.InputInterface, error)
 
 var InputAdapterRegistry = map[string]InputAdapterFactory{
-	"csv": CSVAdapterFactory,
+	"csv": CSVReaderFactory,
+	// "excel": ExcelAdapterFactory, etc.
+}
+type OutputAdapterFactory func(args map[string]any,payload *df.Dataframe) (ports.OutputInterface, error)
+var OutAdapterRegistry = map[string]OutputAdapterFactory{
+	"csv":CSVWriterFactory ,
 	// "excel": ExcelAdapterFactory, etc.
 }
 
-func CSVAdapterFactory(args map[string]any) (ports.InputInterface, error) {
+func CSVWriterFactory(args map[string]any, payload *df.Dataframe) (ports.OutputInterface, error){
+	return &CSVWriter{
+		Data: payload,
+		FilePath: args["file_path"].(string),
+	}, nil
+}
+
+func CSVReaderFactory(args map[string]any) (ports.InputInterface, error) {
 	filePath, ok := args["filepath"].(string)
 	if !ok || filePath == ""{
 		return nil, fmt.Errorf("'filepath' is required and must be a string")

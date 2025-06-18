@@ -5,46 +5,51 @@ import (
 	"log"
 	"path/filepath"
 	"sync"
+
 	fh "codehub-g.huawei.com/ProjectIPE/IPEGOCORE/internal/file_handler"
-	
 )
 
 type DAG struct {
-	Nodes map[string]*NodeModule
-	Edges map[string][]string
-	Sorted [][]*NodeModule     
+	Nodes  map[string]*NodeModule
+	Edges  map[string][]string
+	Sorted [][]*NodeModule
 }
 
 func BuildGraph(manifest *fh.Manifest) *DAG {
 	dag := DAG{Nodes: make(map[string]*NodeModule),
-	    Edges: make(map[string][]string),}
+		Edges: make(map[string][]string)}
 	root := filepath.Dir(manifest.ManifestPath)
-	
-	for _, node := range manifest.NodeList{
+
+	for _, node := range manifest.NodeList {
+		var output string
+		if node.OutputArgs != nil{
+			output = node.OutputArgs["export_as"].(string)
+		}
 		newModule := &NodeModule{
 			ModuleName: node.Id,
-			Adapter: node.Adapter,
-			Args: node.Args,
-			ScriptPath: filepath.Join(root,"modules", node.Id, "script.lua"),
-			DataOutput: OutputType(node.Export),
+			Adapter:    node.Adapter,
+			InArgs:     node.InputArgs,
+			OutArgs:     node.OutputArgs,
+			ScriptPath: filepath.Join(root, "modules", node.Id, "script.lua"),
+			DataOutput: output,
 		}
 		dag.Nodes[node.Id] = newModule
 	}
 
-	for _, node := range manifest.NodeList{
+	for _, node := range manifest.NodeList {
 		current := dag.Nodes[node.Id]
-		if len(node.Depends) > 0{
-			for _, depId := range node.Depends{
+		if len(node.Depends) > 0 {
+			for _, depId := range node.Depends {
 				dep, ok := dag.Nodes[depId]
-				if !ok{
+				if !ok {
 					log.Printf("Warning: node %s depends on unknown node %s", node.Id, depId)
 					continue
 				}
 				current.Depends = append(current.Depends, dep)
-				
+
 				dep.Children = append(dep.Children, current)
 				dag.Edges[depId] = append(dag.Edges[depId], node.Id)
-		}
+			}
 		}
 	}
 	dag.Sorted = dag.exectutionLayers()
@@ -52,51 +57,50 @@ func BuildGraph(manifest *fh.Manifest) *DAG {
 }
 
 func (dag *DAG) validate() error {
-    visitState := map[string]int{} 
+	visitState := map[string]int{}
 
-    var dfs func(node *NodeModule) error
-    dfs = func(node *NodeModule) error {
-        state := visitState[node.ModuleName]
+	var dfs func(node *NodeModule) error
+	dfs = func(node *NodeModule) error {
+		state := visitState[node.ModuleName]
 
-        if state == 1 {
-            return fmt.Errorf("cycle detected at module: %s", node.ModuleName)
-        }
-        if state == 2 {
-            return nil 
-        }
+		if state == 1 {
+			return fmt.Errorf("cycle detected at module: %s", node.ModuleName)
+		}
+		if state == 2 {
+			return nil
+		}
 
-        visitState[node.ModuleName] = 1 
+		visitState[node.ModuleName] = 1
 
-        for _, dep := range node.Depends {
-            if err := dfs(dep); err != nil {
-                return err
-            }
-        }
+		for _, dep := range node.Depends {
+			if err := dfs(dep); err != nil {
+				return err
+			}
+		}
 
-        visitState[node.ModuleName] = 2 
-        return nil
-    }
+		visitState[node.ModuleName] = 2
+		return nil
+	}
 
-    for _, node := range dag.Nodes {
-        if visitState[node.ModuleName] == 0 {
-            if err := dfs(node); err != nil {
-                return err
-            }
-        }
-    }
+	for _, node := range dag.Nodes {
+		if visitState[node.ModuleName] == 0 {
+			if err := dfs(node); err != nil {
+				return err
+			}
+		}
+	}
 
-    return nil 
+	return nil
 }
 
-
-func (dag *DAG) getInDegrees() map[string]int{
+func (dag *DAG) getInDegrees() map[string]int {
 	inDegree := make(map[string]int)
 
-	for id := range dag.Nodes{
+	for id := range dag.Nodes {
 		inDegree[id] = 0
 	}
 
-	for _,node := range dag.Nodes{
+	for _, node := range dag.Nodes {
 		for _, child := range node.Children {
 			inDegree[child.ModuleName]++
 		}
@@ -109,9 +113,9 @@ func (dag *DAG) exectutionLayers() [][]*NodeModule {
 	inDegree := dag.getInDegrees()
 	queue := []*NodeModule{}
 	layers := [][]*NodeModule{}
-	for id,degree := range inDegree {
+	for id, degree := range inDegree {
 
-		if degree == 0{
+		if degree == 0 {
 			queue = append(queue, dag.Nodes[id])
 		}
 	}
@@ -134,21 +138,22 @@ func (dag *DAG) exectutionLayers() [][]*NodeModule {
 	dag.Sorted = layers
 	return layers
 
-} 
+}
 
 func (dag *DAG) Run() ModuleStatus {
 
-	if err := dag.validate(); err != nil{
+	if err := dag.validate(); err != nil {
 		log.Printf("DAG not valid, cycle detected: %v", err)
 		return StatusFailed
 	}
 
-	for _, layer := range dag.Sorted{
-		wg := sync.WaitGroup{} 
+	for _, layer := range dag.Sorted {
+		wg := sync.WaitGroup{}
 		statusChan := make(chan ModuleStatus, len(layer))
 		for _, node := range layer {
+			log.Printf("Running Module: %v", node.ModuleName)
 			wg.Add(1)
-			go func (n *NodeModule){
+			go func(n *NodeModule) {
 				defer wg.Done()
 				status := n.Run()
 				statusChan <- status
@@ -161,6 +166,44 @@ func (dag *DAG) Run() ModuleStatus {
 				log.Println("Stopping DAG execution due to module failure")
 				return StatusFailed
 			}
+		}
+	}
+	return StatusSuccess
+}
+func (dag *DAG) RunModule(selectedNode *NodeModule) ModuleStatus {
+
+	if err := dag.validate(); err != nil {
+		log.Printf("DAG not valid, cycle detected: %v", err)
+		return StatusFailed
+	}
+	shouldStop := false
+	for _, layer := range dag.Sorted {
+		wg := sync.WaitGroup{}
+		statusChan := make(chan ModuleStatus, len(layer))
+		for _, node := range layer {
+			log.Printf("Running Module: %v", node.ModuleName)
+			wg.Add(1)
+			n := node
+			go func(n *NodeModule) {
+				defer wg.Done()
+				status := n.Run()
+				statusChan <- status
+			}(n)
+			if node == selectedNode {
+				shouldStop = true
+				break
+			}
+		}
+		wg.Wait()
+		close(statusChan)
+		for status := range statusChan {
+			if status == StatusFailed {
+				log.Println("Stopping DAG execution due to module failure")
+				return StatusFailed
+			}
+		}
+		if shouldStop {
+			break // break the outer loop
 		}
 	}
 	return StatusSuccess

@@ -1,11 +1,13 @@
 package graph
 
 import (
+	"errors"
+	"log"
+
+	"codehub-g.huawei.com/ProjectIPE/IPEGOCORE/core/adapters"
 	"codehub-g.huawei.com/ProjectIPE/IPEGOCORE/core/df"
 	"codehub-g.huawei.com/ProjectIPE/IPEGOCORE/core/engine"
-	"codehub-g.huawei.com/ProjectIPE/IPEGOCORE/core/adapters"
-	"github.com/yuin/gopher-lua"
-	"log"
+	lua "github.com/yuin/gopher-lua"
 )
 
 type ModuleStatus string
@@ -19,47 +21,41 @@ const (
 
 type OutputType string
 
-const (
-	OutputNil      OutputType = ""
-	OutputNone      OutputType = "none"
-	OutputDataframe OutputType = "dataframe"
-	OutputCSV       OutputType = "csv"
-	OutputJSON      OutputType = "json"
-)
 
-type NodeModule struct{
+type NodeModule struct {
 	ModuleName string
-	ScriptPath string 
-	Depends []*NodeModule
-	Children []*NodeModule
- 	DataOutput OutputType
-	Adapter string
-	Args map[string]any
-	Payload *df.Dataframe
-	Status ModuleStatus
+	ScriptPath string
+	Depends    []*NodeModule
+	Children   []*NodeModule
+	DataOutput string
+	Adapter    string
+	InArgs     map[string]any
+	OutArgs     map[string]any
+	Payload    *df.Dataframe
+	Status     ModuleStatus
 }
 
-func (nm *NodeModule) registerPayload(L *lua.LState, module *NodeModule ) {
+func (nm *NodeModule) registerPayload(L *lua.LState, module *NodeModule) {
 	ud := L.NewUserData()
 	ud.Value = module.Payload
 	L.SetMetatable(ud, L.GetTypeMetatable("dataframe"))
-	L.SetGlobal("payload_" + module.ModuleName, ud)
+	L.SetGlobal("payload_"+module.ModuleName, ud)
 }
 
 func (nm *NodeModule) Run() ModuleStatus {
 	nm.Status = StatusRunning
-	
+
 	L := lua.NewState()
 	defer L.Close()
 	engine.CreateLuaEnv(L)
 
-	if nm.Adapter != ""{
+	if nm.Adapter != "" {
 		factory, ok := adapters.InputAdapterRegistry[nm.Adapter]
 		if !ok {
 			log.Printf("Adapter %v of %v do not exist", nm.Adapter, nm.ModuleName)
 			return StatusFailed
 		}
-		adapter, err := factory(nm.Args)
+		adapter, err := factory(nm.InArgs)
 		if err != nil {
 			log.Printf("Adapter %v of %v: Error while creating adapter - %v ", nm.Adapter, nm.ModuleName, err)
 			return StatusFailed
@@ -75,7 +71,7 @@ func (nm *NodeModule) Run() ModuleStatus {
 
 	for _, dependency := range nm.Depends {
 		if dependency.Status == StatusFailed {
-			log.Printf("dependecy %v of %v did not succeed",dependency.ModuleName, nm.ModuleName)
+			log.Printf("dependecy %v of %v did not succeed", dependency.ModuleName, nm.ModuleName)
 			nm.Status = StatusFailed
 			return StatusFailed
 		}
@@ -86,21 +82,21 @@ func (nm *NodeModule) Run() ModuleStatus {
 
 	// Load the Lua script
 	if err := L.DoFile(nm.ScriptPath); err != nil {
-        log.Printf("[Module %s] Lua error: %v", nm.ModuleName, err)
+		log.Printf("[Module %s] Lua error: %v", nm.ModuleName, err)
 		nm.Status = StatusFailed
 		return StatusFailed
-    }
+	}
 
 	fn := L.GetGlobal("main")
 	if fn.Type() != lua.LTFunction {
-	log.Printf("main is not a function in module %s", nm.ModuleName)
-	nm.Status = StatusFailed
-	return StatusFailed
+		log.Printf("main is not a function in module %s", nm.ModuleName)
+		nm.Status = StatusFailed
+		return StatusFailed
 	}
 	err := L.CallByParam(lua.P{
-	Fn:      fn,
-	NRet:    1,     // expecting 1 return value
-	Protect: true,  // handle errors
+		Fn:      fn,
+		NRet:    1,    // expecting 1 return value
+		Protect: true, // handle errors
 	})
 
 	if err != nil {
@@ -110,7 +106,7 @@ func (nm *NodeModule) Run() ModuleStatus {
 	}
 
 	ret := L.Get(-1)
-	L.Pop(1)   
+	L.Pop(1)
 
 	ud, ok := ret.(*lua.LUserData)
 	if !ok {
@@ -125,8 +121,22 @@ func (nm *NodeModule) Run() ModuleStatus {
 		nm.Status = StatusFailed
 		return StatusFailed
 	}
-	nm.DataOutput = OutputDataframe
 	nm.Payload = newdf
 	nm.Status = StatusSuccess
 	return StatusSuccess
+}
+
+func (nm *NodeModule) Export() error {
+	if nm.DataOutput == "" {
+		return errors.New("no Output was set")
+	}
+	factory, ok := adapters.OutAdapterRegistry[nm.DataOutput]
+		if !ok {
+			log.Printf("Adapter %v of %v do not exist", nm.Adapter, nm.ModuleName)
+			return errors.New("output not valid")
+	}
+	log.Println(nm.Payload)
+	outadapter,_ := factory(nm.OutArgs, nm.Payload)
+	outadapter.ExportData()
+	return nil
 }

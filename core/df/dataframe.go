@@ -284,8 +284,24 @@ func (df *Dataframe) RowCount() int {
 
 func (df *Dataframe) Row(i int) map[string]any{
 	row := make(map[string]any, len(df.Columns))
-	for _, col := range df.Columns {
-		row[col.HeaderName()] = col.DataSlice()[i]
+	for _, col := range df.ColumnOrder {
+		row[df.Columns[col].HeaderName()] = df.Columns[col].DataSlice()[i]
+	}
+	return row
+}
+
+func (df *Dataframe) RowSliceAny(i int) []any {
+	row := make([]any, 0, len(df.Columns))
+	for _, col := range df.ColumnOrder {
+		row = append(row, df.Columns[col].DataSlice()[i])
+	}
+	return row
+}
+func (df *Dataframe) RowSlice(i int) []string {
+	row := make([]string, 0, len(df.Columns))
+	for _, col := range df.ColumnOrder {
+		val := df.Columns[col].DataSlice()[i]
+		row = append(row, fmt.Sprint(val))
 	}
 	return row
 }
