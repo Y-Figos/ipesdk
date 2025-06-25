@@ -1,13 +1,15 @@
 package df
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"reflect"
 	"strconv"
 	"strings"
-	"github.com/yuin/gopher-lua"
+
 	"codehub-g.huawei.com/ProjectIPE/IPEGOCORE/utils"
+	"github.com/yuin/gopher-lua"
 )
 
 type ColumnInterface interface{
@@ -306,13 +308,6 @@ func (df *Dataframe) RowSlice(i int) []string {
 	return row
 }
 
-func (df *Dataframe) RowView(i int) RowView {
-    return RowView{
-        Cols:  df.Columns,
-        Index: i,
-    }
-}
-
 func (df *Dataframe) Filter(predicate func(map[string]any) bool) *Dataframe {
     
 	newCols := make(map[string]ColumnInterface, len(df.Columns))
@@ -387,15 +382,21 @@ func (df *Dataframe) FilterLua(L *lua.LState, fn *lua.LFunction) (*Dataframe, er
 	}, nil
 }
 
-type RowView struct {
-    Cols  map[string]ColumnInterface
-    Index int
+func (df *Dataframe) Append(otherDf *Dataframe) error {
+	if !reflect.DeepEqual(df.ColumnOrder, otherDf.ColumnOrder){
+		return errors.New("dataframes must be equal to be appended")
+	}
+	for header, column := range df.Columns {
+		for _, value  := range otherDf.Columns[header].DataSlice(){
+			column.AppendValue(value)
+		}
+	}
+	return nil
 }
 
-func (r RowView) Get(col string) any {
-    return r.Cols[col].GetValue(r.Index)
+func (df *Dataframe) NewColumn(columnName string, newColumn ColumnInterface){
+	df.ColumnOrder = append(df.ColumnOrder, columnName)
+	df.Columns[columnName] = newColumn
 }
-
-
 
 

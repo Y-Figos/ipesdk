@@ -1,11 +1,12 @@
 package internal
 
 import (
+	"log"
+
 	"codehub-g.huawei.com/ProjectIPE/IPEGOCORE/core/df"
 	"codehub-g.huawei.com/ProjectIPE/IPEGOCORE/utils"
 	lua "github.com/yuin/gopher-lua"
 )
-
 
 // Register function for Column Type
 func RegisterColumnType(L *lua.LState) {
@@ -124,7 +125,12 @@ func dataframeIndex(L *lua.LState) int {
 	case "filter":
 		L.Push(L.NewFunction(dataframeFilter))
 		return 1
-
+	case "new_column":
+		L.Push(L.NewFunction(dataframeNewColumn))
+		return 1
+	case "append":
+		L.Push(L.NewFunction(dataframeAppend))
+			return 1
 	}
 
 	// Then, check if key is a column name
@@ -175,3 +181,17 @@ func dataframeFilter(L *lua.LState) int {
 	return 1
 }
 
+func dataframeNewColumn(L *lua.LState) int {
+	mydf := checkUserDataAs[*df.Dataframe](L, 1)
+	colName := L.CheckString(2)
+	col := checkUserDataAs[df.ColumnInterface](L, 3)
+	log.Println(col.DataSlice()...)
+	mydf.NewColumn(colName,col)
+	return 0
+}
+func dataframeAppend(L *lua.LState) int {
+	mydf := checkUserDataAs[*df.Dataframe](L, 1)
+	otherdf := checkUserDataAs[*df.Dataframe](L, 2)
+	mydf.Append(otherdf)
+	return 0
+}
