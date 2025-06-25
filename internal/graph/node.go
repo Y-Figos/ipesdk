@@ -21,7 +21,6 @@ const (
 
 type OutputType string
 
-
 type NodeModule struct {
 	ModuleName string
 	ScriptPath string
@@ -31,15 +30,15 @@ type NodeModule struct {
 	Adapter    string
 	InArgs     map[string]any
 	OutArgs     map[string]any
-	Payload    *df.Dataframe
+	Payloads    map[string]*df.Dataframe
 	Status     ModuleStatus
 }
 
-func (nm *NodeModule) registerPayload(L *lua.LState, module *NodeModule) {
-	ud := L.NewUserData()
-	ud.Value = module.Payload
-	L.SetMetatable(ud, L.GetTypeMetatable("dataframe"))
-	L.SetGlobal("payload_"+module.ModuleName, ud)
+func registerPayload(L *lua.LState, name string, dataframe *df.Dataframe) {
+    ud := L.NewUserData()
+    ud.Value = dataframe
+    L.SetMetatable(ud, L.GetTypeMetatable("dataframe"))
+    L.SetGlobal(name, ud)
 }
 
 func (nm *NodeModule) Run() ModuleStatus {
@@ -60,13 +59,15 @@ func (nm *NodeModule) Run() ModuleStatus {
 			log.Printf("Adapter %v of %v: Error while creating adapter - %v ", nm.Adapter, nm.ModuleName, err)
 			return StatusFailed
 		}
-		df, err := adapter.GetData()
+		dataframe, err := adapter.GetData()
 		if err != nil {
 			log.Printf("Adapter %v of %v: Error while creating adapter - %v ", nm.Adapter, nm.ModuleName, err)
 			return StatusFailed
 		}
-		nm.Payload = df
-		nm.registerPayload(L, nm)
+		nm.Payloads = map[string]*df.Dataframe{ //df.Dataframe is not a type
+    	nm.ModuleName + "_input": dataframe,
+		}
+		registerPayload(L, nm.ModuleName + "_input", dataframe)
 	}
 
 	for _, dependency := range nm.Depends {
@@ -75,9 +76,15 @@ func (nm *NodeModule) Run() ModuleStatus {
 			nm.Status = StatusFailed
 			return StatusFailed
 		}
-		if dependency.Payload != nil {
-			nm.registerPayload(L, dependency)
-		}
+		if dependency.Payloads != nil {
+    	for name, dataframe := range dependency.Payloads {
+        if nm.Payloads == nil {
+            nm.Payloads = make(map[string]*df.Dataframe) //df.Dataframe is not a type
+        }
+        nm.Payloads[name] = dataframe
+        registerPayload(L, name, dataframe)
+    }
+}
 	}
 
 	// Load the Lua script
@@ -108,20 +115,33 @@ func (nm *NodeModule) Run() ModuleStatus {
 	ret := L.Get(-1)
 	L.Pop(1)
 
-	ud, ok := ret.(*lua.LUserData)
-	if !ok {
-		log.Printf("main() did not return a dataframe")
-		nm.Status = StatusFailed
-		return StatusFailed
-	}
+	nm.Payloads = make(map[string]*df.Dataframe)
 
-	newdf, ok := ud.Value.(*df.Dataframe)
-	if !ok {
-		log.Printf("Returned value is not a Dataframe")
-		nm.Status = StatusFailed
-		return StatusFailed
-	}
-	nm.Payload = newdf
+	switch val := ret.(type) {
+	case *lua.LUserData:
+		if df, ok := val.Value.(*df.Dataframe); ok {
+			 nm.Payloads[nm.ModuleName] = df
+		} else {
+			log.Printf("Returned value is not a Dataframe")
+			nm.Status = StatusFailed
+			return StatusFailed
+		}
+
+	case *lua.LTable:
+		val.ForEach(func(key, value lua.LValue) {
+			name := key.String()
+			if ud, ok := value.(*lua.LUserData); ok {
+				if df, ok := ud.Value.(*df.Dataframe); ok {
+					nm.Payloads[name] = df
+				}
+			}
+		})
+
+default:
+    log.Printf("main() did not return a dataframe or table")
+    nm.Status = StatusFailed
+    return StatusFailed
+}
 	nm.Status = StatusSuccess
 	return StatusSuccess
 }
@@ -135,8 +155,11 @@ func (nm *NodeModule) Export() error {
 			log.Printf("Adapter %v of %v do not exist", nm.Adapter, nm.ModuleName)
 			return errors.New("output not valid")
 	}
-	log.Println(nm.Payload)
-	outadapter,_ := factory(nm.OutArgs, nm.Payload)
+	dfToExport, ok := nm.Payloads["output"]
+	if !ok {
+		return errors.New("no 'output' payload to export")
+	}
+	outadapter, _ := factory(nm.OutArgs, dfToExport)
 	outadapter.ExportData()
 	return nil
 }

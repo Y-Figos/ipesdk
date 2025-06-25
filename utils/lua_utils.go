@@ -38,9 +38,9 @@ func ConvertLuaTypeToGoType(val lua.LValue) any {
 		})
 		return goMap
 	case *lua.LFunction:
-		return "function" // or handle specially
+		return "function" 
 	case *lua.LUserData:
-		return v.Value // or fmt.Sprintf("%v", v.Value)
+		return v.Value 
 	default:
 		return nil
 	}
