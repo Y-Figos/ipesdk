@@ -11,6 +11,7 @@ import (
 type ToolInfo struct {
 	Name    string `json:"name"`
 	Version string `json:"version"`
+	Desc	string `json:"description"`
 }
 
 type Node struct {
