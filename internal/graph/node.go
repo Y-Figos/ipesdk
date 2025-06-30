@@ -120,7 +120,7 @@ func (nm *NodeModule) Run() ModuleStatus {
 	switch val := ret.(type) {
 	case *lua.LUserData:
 		if df, ok := val.Value.(*df.Dataframe); ok {
-			 nm.Payloads[nm.ModuleName] = df
+			 nm.Payloads[nm.ModuleName + "payload"] = df
 		} else {
 			log.Printf("Returned value is not a Dataframe")
 			nm.Status = StatusFailed
