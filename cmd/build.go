@@ -1,50 +1,43 @@
 package cmd
 
 import (
-	"archive/zip"
-	"io"
 	"os"
-	"path/filepath"
 
 	"codehub-g.huawei.com/ProjectIPE/IPEGOCORE/internal/file_handler"
+	"github.com/spf13/cobra"
 )
 
-func BuildIpeFromFolder(version string,sourceDir string, outputFile string) error {
-	err := file_handler.CreateManifest(sourceDir, version)
-	if err != nil{
-		return err
-	}
-	outfile, err := os.Create(outputFile)
-	if err != nil{
-		return err
-	}
-	defer outfile.Close()
+var ipeOutput string
+var toolVersionFlag string
 
-	writer := zip.NewWriter(outfile)
-	defer writer.Close()
+var buildTool = &cobra.Command{
+	Use: "build",
+	Short: "Build the IPE folder structure into the .ipe file format",
+	Args: cobra.ExactArgs(1),
+	RunE: func (cmd *cobra.Command, args []string) error{
+		filePath := args[0]
+		if _, err := os.Stat(filePath); os.IsNotExist(err){
+			return err
+		}else if err != nil{
+			return err
+		}
+		if _, err := os.Stat(ipeOutput); os.IsNotExist(err){
+			return err
+		} else if err != nil{
+			return err
+		}
+		if _, err := file_handler.CreateManifest(filePath,toolVersionFlag); err != nil {
+			return err
+		}
+		file_handler.BuildIpeFromFolder(toolVersionFlag,filePath , ipeOutput)
+		return nil		
+	} ,
+}
 
-	return filepath.Walk(sourceDir, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if info.IsDir(){
-			return nil
-		}
-		relpath, err := filepath.Rel(sourceDir,path)
-		if err != nil {
-			return err
-		}
-		file, err := os.Open(path)
-		if err != nil {
-			return err
-		}
-		defer file.Close()
-
-		zipEntryWriter, err := writer.Create(relpath)
-		if err != nil {
-			return err
-		}
-		_,err = io.Copy(zipEntryWriter,file)
-		return err
-	})
+func init() {
+	buildTool.Flags().StringVarP(&ipeOutput, "output", "o", "", "Set output of module")
+	buildTool.Flags().StringVarP(&toolVersionFlag, "version", "v", "", "Set output of module")
+	buildTool.MarkFlagRequired("output")
+	buildTool.MarkFlagRequired("version")
+	rootCmd.AddCommand(buildTool)
 }

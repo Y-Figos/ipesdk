@@ -1,10 +1,8 @@
 package file_handler
 
 import (
-	"archive/zip"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -36,13 +34,15 @@ func (fs *FolderStruct) Init() error {
 	if _, err := os.Stat(fs.ToolRegPath); os.IsNotExist(err){
 		log.Println("tool registry does not exist, creating file")
 		os.Create(fs.ToolRegPath)
+		data, _ := json.MarshalIndent(&ToolRegistry{make(map[string]ToolInfo)},"","")
+		os.WriteFile(fs.ToolRegPath, data, 0664)
 	}
 	log.Println("folder structure initialized succssesfuly")
 	return nil
 }
 
 
-func (fs *FolderStruct) parseToolRegistry() (*ToolRegistry, error) {
+func (fs *FolderStruct) ParseToolRegistry() (*ToolRegistry, error) {
 	data, err := os.ReadFile(fs.ToolRegPath)
 	if err != nil{
 		return nil,err
@@ -56,22 +56,36 @@ func (fs *FolderStruct) parseToolRegistry() (*ToolRegistry, error) {
 	return &toolRegistry, nil
 }
 
+func (fs *FolderStruct) GetInstalledTool(toolName string) (*Manifest, error){
+	toolRegistry, err := fs.ParseToolRegistry()
+	if err != nil{
+		return nil, fmt.Errorf("failed to parse Tool Registry File: %w", err)
+	}
+	tool, ok := toolRegistry.ToolList[toolName]
+	if !ok {
+		return nil, fmt.Errorf("tool not Installed: %w", err)
+	}
+	toolManifestPath := filepath.Join(fs.ToolsFolder, tool.Name, "manifest.json")
+	log.Printf("Tool Found, loading %v \n", toolName)
+	return ParseManifest(toolManifestPath)
+}
+
 func (fs *FolderStruct) RegisterTool(toolFolder string) error {
-	toolRegistry, err := fs.parseToolRegistry()
+	toolRegistry, err := fs.ParseToolRegistry()
 	if err != nil{
 		return fmt.Errorf("failed to parse Tool Registry File: %w", err)
 	}
-	toolManifest, err := ParseManifest(toolFolder)
+	toolManifest, err := ParseManifest(filepath.Join(toolFolder, "manifest.json"))
 	if err != nil {
 		return fmt.Errorf("failed to parse Tool Manifest File: %w", err)
 	}
 
-	if toolManifest.Tool.Name == "" || toolManifest.Tool.Desc == "" || toolManifest.Tool.Version == "" {
+	if toolManifest.Tool.Name == "" || toolManifest.Tool.Version == "" {
 		return fmt.Errorf("invalid manifest")
 	} 
 
 	toolInfo := toolManifest.Tool
-	id := fmt.Sprintf("%s@%s",toolInfo.Name, toolInfo.Version)
+	id := toolInfo.Name
 	
 	toolRegistry.ToolList[id] = toolInfo
 	
@@ -88,48 +102,16 @@ func (fs *FolderStruct) RegisterTool(toolFolder string) error {
 }
 
 func (fs *FolderStruct) Extract(ipeFile string) error {
-	//Later to be added to a specific function
 	toolName := strings.TrimSuffix(filepath.Base(ipeFile), filepath.Ext(ipeFile))
-	
 	toolFolder := filepath.Join(fs.ToolsFolder, toolName)
-	
-	archive, err := zip.OpenReader(ipeFile)
+	err := ExtractIPE(ipeFile, toolFolder)
 	if err != nil {
-    	return fmt.Errorf("failed to open zip file: %w", err)
-	}	
-	defer archive.Close()
-	
-	for _, f := range archive.File {
-		if f.Name == "" {
-			continue
-		}
-		relPath := filepath.Join(toolFolder, f.Name)
-		if !strings.HasPrefix(relPath, filepath.Clean(toolFolder)+string(os.PathSeparator)) {
-            return fmt.Errorf("invalid file path")
-        }	
-		if f.FileInfo().IsDir() {
-            log.Println("creating directory...")
-            os.MkdirAll(relPath, os.ModePerm)
-            continue
-        }
-		if err := os.MkdirAll(filepath.Dir(relPath), os.ModePerm); err != nil {
-            return fmt.Errorf("failed to create tool directories: %w", err)
-        }
-		dstFile, err := os.OpenFile(relPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
-    	if err != nil {
-        	return err
-    	}	
-		fileInArchive, err := f.Open()
-		if err != nil {
-			return err
-		}
-		
-		if _, err := io.Copy(dstFile, fileInArchive); err != nil {
-			return err
-		}
-		fileInArchive.Close()
-		dstFile.Close()
-		}
-
+		log.Fatal("Extraction failed:", err)
+	}
+	err = fs.RegisterTool(toolFolder)
+	if err != nil {
+		return fmt.Errorf("failed to register tool: %w", err)
+	}
 	return nil
 }
+

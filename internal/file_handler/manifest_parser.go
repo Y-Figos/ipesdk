@@ -26,7 +26,7 @@ type Node struct {
 type Manifest struct {
 	ManifestPath string   `json:"-"`
 	Tool         ToolInfo `json:"tool"`
-	NodeList     []Node   `json:"nodes"`
+	NodeList     map[string]Node   `json:"nodes"`
 }
 
 func ParseManifest(manifestPath string) (*Manifest, error) {
@@ -41,8 +41,8 @@ func ParseManifest(manifestPath string) (*Manifest, error) {
 	return &data, nil
 }
 
-func CreateManifest(projectFolder string, version string) error {
-	nodeList := []Node{}
+func CreateManifest(projectFolder string, version string) (*Manifest, error) {
+	nodeList := make(map[string]Node)
 	modulesFolder := filepath.Join(projectFolder, "modules")
 	err := filepath.WalkDir(modulesFolder, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -57,7 +57,7 @@ func CreateManifest(projectFolder string, version string) error {
 			if err := json.Unmarshal(data, &node); err != nil {
 				return fmt.Errorf("error parsing manifest: %v", err)
 			}
-			nodeList = append(nodeList, node)
+			nodeList[node.Id] = node
 		}
 		return nil
 	})
@@ -71,12 +71,12 @@ func CreateManifest(projectFolder string, version string) error {
 	jsonBytes, err := json.MarshalIndent(newManifest, "", "  ")
 	if err != nil {
 		fmt.Println("Error marshaling JSON:", err)
-		return err
+		return nil,err
 	}
 	err = os.WriteFile(filepath.Join(projectFolder, "manifest.json"), jsonBytes, 0644)
 	if err != nil {
 		fmt.Println("Error writing file:", err)
-		return err
+		return nil,err
 	}
-	return nil
+	return &newManifest, nil
 }

@@ -140,11 +140,10 @@ func (dag *DAG) exectutionLayers() [][]*NodeModule {
 
 }
 
-func (dag *DAG) Run() ModuleStatus {
+func (dag *DAG) Run() error {
 
 	if err := dag.validate(); err != nil {
-		log.Printf("DAG not valid, cycle detected: %v", err)
-		return StatusFailed
+		return fmt.Errorf("DAG not valid, cycle detected: %v", err)
 	}
 
 	for _, layer := range dag.Sorted {
@@ -163,18 +162,17 @@ func (dag *DAG) Run() ModuleStatus {
 		close(statusChan)
 		for status := range statusChan {
 			if status == StatusFailed {
-				log.Println("Stopping DAG execution due to module failure")
-				return StatusFailed
+				return fmt.Errorf("stopping DAG execution due to module failure")
 			}
 		}
 	}
-	return StatusSuccess
+	return nil
 }
-func (dag *DAG) RunModule(selectedNode *NodeModule) ModuleStatus {
+func (dag *DAG) RunModule(selectedNode *NodeModule) error {
 
 	if err := dag.validate(); err != nil {
-		log.Printf("DAG not valid, cycle detected: %v", err)
-		return StatusFailed
+		return fmt.Errorf("DAG not valid, cycle detected: %v", err)
+		
 	}
 	shouldStop := false
 	for _, layer := range dag.Sorted {
@@ -198,13 +196,13 @@ func (dag *DAG) RunModule(selectedNode *NodeModule) ModuleStatus {
 		close(statusChan)
 		for status := range statusChan {
 			if status == StatusFailed {
-				log.Println("Stopping DAG execution due to module failure")
-				return StatusFailed
+				
+				return fmt.Errorf("stopping DAG execution due to module failure")
 			}
 		}
 		if shouldStop {
 			break // break the outer loop
 		}
 	}
-	return StatusSuccess
+	return nil
 }
