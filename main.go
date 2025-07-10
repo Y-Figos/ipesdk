@@ -3,8 +3,8 @@ package main
 import (
 	"log"
 	"os"
-	"codehub-g.huawei.com/ProjectIPE/IPEGOCORE/cmd"
-	"codehub-g.huawei.com/ProjectIPE/IPEGOCORE/internal/file_handler"
+	"github.com/Y-Figos/ipesdk/cmd"
+	"github.com/Y-Figos/ipesdk/internal/file_handler"
 )
 func main()  {
 	fs := file_handler.FolderStruct{}

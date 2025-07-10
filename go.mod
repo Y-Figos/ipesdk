@@ -1,4 +1,4 @@
-module codehub-g.huawei.com/ProjectIPE/IPEGOCORE
+module github.com/Y-Figos/ipesdk
 
 go 1.24.0
 

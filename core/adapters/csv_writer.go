@@ -5,7 +5,7 @@ import (
 	"errors"
 	"os"
 
-	"codehub-g.huawei.com/ProjectIPE/IPEGOCORE/core/df"
+	"github.com/Y-Figos/ipesdk/core/df"
 )
 
 type CSVWriter struct {

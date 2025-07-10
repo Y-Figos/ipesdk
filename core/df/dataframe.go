@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"codehub-g.huawei.com/ProjectIPE/IPEGOCORE/utils"
+	"github.com/Y-Figos/ipesdk/utils"
 	"github.com/yuin/gopher-lua"
 )
 

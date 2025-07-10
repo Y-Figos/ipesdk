@@ -7,9 +7,7 @@ import (
 	"os"
 	_ "reflect"
 	"errors"
-	"codehub-g.huawei.com/ProjectIPE/IPEGOCORE/core/df"
-	_ "codehub-g.huawei.com/ProjectIPE/IPEGOCORE/core/df/infer"
-	_ "codehub-g.huawei.com/ProjectIPE/IPEGOCORE/core/ports"
+	"github.com/Y-Figos/ipesdk/core/df"
 )
 
 type CSVReader struct {

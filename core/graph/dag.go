@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"sync"
 
-	fh "codehub-g.huawei.com/ProjectIPE/IPEGOCORE/internal/file_handler"
+	fh "github.com/Y-Figos/ipesdk/internal/file_handler"
 )
 
 type DAG struct {

@@ -2,7 +2,7 @@ package infer
 
 import (
 	"reflect"
-	"codehub-g.huawei.com/ProjectIPE/IPEGOCORE/core/df"
+	"github.com/Y-Figos/ipesdk/core/df"
 )
 
 func CreateTypedColumn(header string,columnType reflect.Type) df.ColumnInterface {

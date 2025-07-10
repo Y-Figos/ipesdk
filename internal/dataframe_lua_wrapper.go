@@ -3,8 +3,8 @@ package internal
 import (
 	"log"
 
-	"codehub-g.huawei.com/ProjectIPE/IPEGOCORE/core/df"
-	"codehub-g.huawei.com/ProjectIPE/IPEGOCORE/utils"
+	"github.com/Y-Figos/ipesdk/core/df"
+	"github.com/Y-Figos/ipesdk/utils"
 	lua "github.com/yuin/gopher-lua"
 )
 

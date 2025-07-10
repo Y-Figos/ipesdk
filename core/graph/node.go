@@ -4,9 +4,9 @@ import (
 	"errors"
 	"log"
 
-	"codehub-g.huawei.com/ProjectIPE/IPEGOCORE/core/adapters"
-	"codehub-g.huawei.com/ProjectIPE/IPEGOCORE/core/df"
-	"codehub-g.huawei.com/ProjectIPE/IPEGOCORE/core/engine"
+	"github.com/Y-Figos/ipesdk/core/adapters"
+	"github.com/Y-Figos/ipesdk/core/df"
+	"github.com/Y-Figos/ipesdk/core/engine"
 	lua "github.com/yuin/gopher-lua"
 )
 
