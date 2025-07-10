@@ -1,7 +1,7 @@
 package ports
 
 import(
-	"codehub-g.huawei.com/ProjectIPE/IPEGOCORE/core/df"
+	"github.com/Y-Figos/ipesdk/core/df"
 )
 
 type InputInterface interface{

@@ -2,7 +2,7 @@ package engine
 
 import (
 	"github.com/yuin/gopher-lua"
-	"codehub-g.huawei.com/ProjectIPE/IPEGOCORE/internal"
+	"github.com/Y-Figos/ipesdk/internal"
 )
 
 func CreateLuaEnv(L *lua.LState) {

@@ -1,7 +1,7 @@
 package internal
 
 import (
-	"codehub-g.huawei.com/ProjectIPE/IPEGOCORE/core/adapters"
+	"github.com/Y-Figos/ipesdk/core/adapters"
 
 	lua "github.com/yuin/gopher-lua"
 )

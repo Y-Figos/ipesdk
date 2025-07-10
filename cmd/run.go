@@ -3,9 +3,8 @@ package cmd
 import (
 	// "os"
 	"path/filepath"
-
-	"codehub-g.huawei.com/ProjectIPE/IPEGOCORE/internal/file_handler"
-	"codehub-g.huawei.com/ProjectIPE/IPEGOCORE/core/graph"
+	"github.com/Y-Figos/ipesdk/internal/file_handler"
+	"github.com/Y-Figos/ipesdk/core/graph"
 	"github.com/spf13/cobra"
 )
 
