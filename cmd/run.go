@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 
 	"codehub-g.huawei.com/ProjectIPE/IPEGOCORE/internal/file_handler"
-	"codehub-g.huawei.com/ProjectIPE/IPEGOCORE/internal/graph"
+	"codehub-g.huawei.com/ProjectIPE/IPEGOCORE/core/graph"
 	"github.com/spf13/cobra"
 )
 
