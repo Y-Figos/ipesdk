@@ -1,4 +1,4 @@
-module github.com/Y-Figos/IPESDK
+module github.com/Y-Figos/ipesdk
 
 go 1.24.0
 
