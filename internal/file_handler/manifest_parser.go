@@ -15,12 +15,11 @@ type ToolInfo struct {
 }
 
 type Node struct {
-	Id        string         `json:"id"`
-	Adapter   string         `json:"adapter"`
-	Depends   []string       `json:"depends"`
-	InputArgs map[string]any `json:"input_args"`
-	OutputArgs map[string]any `json:"output_args"`
-	
+	Id        	string        	 `json:"id"`
+	Adapter   	string        	 `json:"adapter"`
+	Depends  	[]string      	 `json:"depends"`
+	InputArgs 	map[string]any	 `json:"input_args"`
+	OutputArgs 	map[string]any	 `json:"output_args"`
 }
 
 type Manifest struct {

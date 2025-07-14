@@ -9,7 +9,7 @@ import (
 )
 
 type CSVWriter struct {
-	Data *df.Dataframe
+	Data 		*df.Dataframe
 	FilePath    string
 	File        *os.File
 	Writer		*csv.Writer
