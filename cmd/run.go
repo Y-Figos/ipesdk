@@ -9,6 +9,7 @@ import (
 )
 
 var testFlag bool
+var export bool
 
 var runTool = &cobra.Command{
 	Use: "run",
@@ -20,6 +21,7 @@ var runTool = &cobra.Command{
 		var err error
 
 		if testFlag {
+			file_handler.CreateManifest(toolName,"1.0")
 			manifestPath := filepath.Join(toolName, "manifest.json")
 			manifest, err = file_handler.ParseManifest(manifestPath)
 			if err != nil {
@@ -34,11 +36,22 @@ var runTool = &cobra.Command{
 		dag := graph.BuildGraph(manifest)
 
 		dag.Run()
+
+		if export {
+			for _, node := range dag.Nodes{
+				err := node.Export()
+				if err != nil {
+					return err
+				}
+			}
+		}
+
 		return nil		
 	} ,
 }
 
 func init() {
-	runTool.Flags().BoolVarP(&testFlag, "test", "t", false, "Set input of module")
+	runTool.Flags().BoolVarP(&testFlag, "test", "t", false, "Use for testing tools eg. still in folder")
+	runTool.Flags().BoolVarP(&export, "export", "o", false, "Set to export modules output")
 	rootCmd.AddCommand(runTool)
 }

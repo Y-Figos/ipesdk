@@ -27,9 +27,9 @@ type ColumnInterface interface{
 }
 
 type Column[T comparable] struct{
-	Header string
-	Data []T
-	GoType reflect.Type
+	Header 		string
+	Data		[]T
+	GoType 		reflect.Type
 }
 
 func (c *Column[T]) EmptyClone() ColumnInterface{

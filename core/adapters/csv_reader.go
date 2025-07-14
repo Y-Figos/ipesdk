@@ -122,10 +122,8 @@ func (c *CSVReader) GetData() (*df.Dataframe, error) {
 		return nil, err
 	}
 
-	//Create BaseInput and create TyperInferer method
 	c.BaseInput.SetupSchemaFromSample(headers, sampleData, &newDf)
 
-	//Create BaseInput and create start Workers method
 	wg := c.BaseInput.StartWorkers(batchChannel, headers, &newDf, c.WorkerCount)
 
 	// Read and send batches

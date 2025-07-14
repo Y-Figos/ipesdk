@@ -38,6 +38,7 @@ func (bi *BaseInput) SetupSchemaFromSample(headers []string, sampleData [][]stri
 	}
 }
 
+//Used for async Writes
 func (bi *BaseInput) StartWorkers(batchChan chan [][]string, headers []string, df *df.Dataframe, workerCount int) *sync.WaitGroup {
 	wg := &sync.WaitGroup{}
 	mu := &sync.Mutex{}
@@ -47,6 +48,7 @@ func (bi *BaseInput) StartWorkers(batchChan chan [][]string, headers []string, d
 	}
 	return wg
 }
+
 
 func (bi *BaseInput) ColumnWriter(channel chan [][]string, headers []string, dataframe *df.Dataframe, wg *sync.WaitGroup, mu *sync.Mutex) {
 	defer wg.Done()
@@ -63,4 +65,16 @@ func (bi *BaseInput) ColumnWriter(channel chan [][]string, headers []string, dat
 		mu.Unlock()
 	}
 
+}
+
+//Used for sync Writes
+func (bi *BaseInput) WriteRows(headers []string, data [][]string, df *df.Dataframe) {
+    for _, row := range data {
+        for colIdx, value := range row {
+            if colIdx >= len(headers) {
+                continue
+            }
+            df.Columns[headers[colIdx]].AppendValue(value)
+        }
+    }
 }
