@@ -9,19 +9,19 @@ import (
 	"github.com/xuri/excelize/v2"
 )
 
-type XLSXWriter struct {
-	Data 		*df.Dataframe
-	FilePath    string
-	SheetName 	string
-	file		*excelize.File
-	HeaderRow 	int
-	rows		[][]string
-	BaseInput   *BaseInput
+type XLSXReader struct {
+	Data      *df.Dataframe
+	FilePath  string
+	SheetName string
+	file      *excelize.File
+	HeaderRow int
+	rows      [][]string
+	BaseInput *BaseInput
 }
 
-func (x *XLSXWriter) GetData() (*df.Dataframe, error){
+func (x *XLSXReader) GetData() (*df.Dataframe, error) {
 	err := x.Open()
-	if err != nil{
+	if err != nil {
 		return nil, err
 	}
 	defer x.Close()
@@ -41,7 +41,7 @@ func (x *XLSXWriter) GetData() (*df.Dataframe, error){
 		Columns:     make(map[string]df.ColumnInterface),
 	}
 	samplesize := 100
-	if samplesize > len(x.rows){
+	if samplesize > len(x.rows) {
 		samplesize = len(x.rows)
 	}
 
@@ -54,10 +54,10 @@ func (x *XLSXWriter) GetData() (*df.Dataframe, error){
 
 	x.BaseInput.WriteRows(headers, x.rows[x.HeaderRow:], &newDf)
 
-	return &newDf, nil;
-} 
+	return &newDf, nil
+}
 
-func (x *XLSXWriter) Open() error {
+func (x *XLSXReader) Open() error {
 	f, err := excelize.OpenFile(x.FilePath)
 	if err != nil {
 		return err
@@ -74,22 +74,22 @@ func (x *XLSXWriter) Open() error {
 	return nil
 }
 
-func (x *XLSXWriter) GetHeaders() ([]string, error) {
-	if len(x.rows) > 0{
-		return x.rows[x.HeaderRow - 1], nil
-	} 
+func (x *XLSXReader) GetHeaders() ([]string, error) {
+	if len(x.rows) > 0 {
+		return x.rows[x.HeaderRow-1], nil
+	}
 	return nil, fmt.Errorf("file has no data")
 }
 
-func (x *XLSXWriter) ReadSample(n int) ([][]string, error){
-	if len(x.rows) > 0 && n < len(x.rows){
-		return x.rows[1:n+1], nil
-	} 
+func (x *XLSXReader) ReadSample(n int) ([][]string, error) {
+	if len(x.rows) > 0 && n < len(x.rows) {
+		return x.rows[1 : n+1], nil
+	}
 	return nil, fmt.Errorf("file has no data")
-} 
+}
 
-func (x *XLSXWriter) Close() error {
-	if err := x.file.Close(); err != nil{
+func (x *XLSXReader) Close() error {
+	if err := x.file.Close(); err != nil {
 		return err
 	}
 	return nil

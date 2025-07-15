@@ -39,9 +39,11 @@ var runTool = &cobra.Command{
 
 		if export {
 			for _, node := range dag.Nodes{
-				err := node.Export()
-				if err != nil {
-					return err
+				if node.ExportFlag{
+					err := node.Export()
+					if err != nil {
+						return err
+					}
 				}
 			}
 		}

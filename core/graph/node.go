@@ -2,6 +2,7 @@ package graph
 
 import (
 	"errors"
+	"fmt"
 	"log"
 
 	"github.com/Y-Figos/ipesdk/core/adapters"
@@ -32,6 +33,7 @@ type NodeModule struct {
 	OutArgs     map[string]any
 	Payloads    map[string]*df.Dataframe
 	Status     ModuleStatus
+	ExportFlag bool
 }
 
 func registerPayload(L *lua.LState, name string, dataframe *df.Dataframe) {
@@ -155,11 +157,19 @@ func (nm *NodeModule) Export() error {
 			log.Printf("Adapter %v of %v do not exist", nm.Adapter, nm.ModuleName)
 			return errors.New("output not valid")
 	}
-	dfToExport, ok := nm.Payloads["output"]
-	if !ok {
-		return errors.New("no 'output' payload to export")
+	// dfToExport, ok := nm.Payloads["output"]
+	// if !ok {
+	// 	return errors.New("no 'output' payload to export")
+	// }
+	outadapter, err := factory(nm.OutArgs, nm.Payloads)
+	if err != nil {
+		return fmt.Errorf("failed to create output adapter: %w", err)
 	}
-	outadapter, _ := factory(nm.OutArgs, dfToExport)
-	outadapter.ExportData()
+	if outadapter == nil {
+		return errors.New("output adapter is nil")
+	}
+	if err := outadapter.ExportData(); err != nil {
+		return fmt.Errorf("failed to export data: %w", err)
+	}
 	return nil
 }

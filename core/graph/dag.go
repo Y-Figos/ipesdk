@@ -32,6 +32,7 @@ func BuildGraph(manifest *fh.Manifest) *DAG {
 			OutArgs:     node.OutputArgs,
 			ScriptPath: filepath.Join(root, "modules", node.Id, "script.lua"),
 			DataOutput: output,
+			ExportFlag: node.ExportFlag,
 		}
 		dag.Nodes[node.Id] = newModule
 	}

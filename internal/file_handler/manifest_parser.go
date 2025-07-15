@@ -20,6 +20,7 @@ type Node struct {
 	Depends  	[]string      	 `json:"depends"`
 	InputArgs 	map[string]any	 `json:"input_args"`
 	OutputArgs 	map[string]any	 `json:"output_args"`
+	ExportFlag	bool			 `json:"export"`
 }
 
 type Manifest struct {

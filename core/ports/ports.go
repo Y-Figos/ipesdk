@@ -16,8 +16,8 @@ type InputInterfaceBatchReader interface {
 }
 type OutputInterface interface{
 	ExportData() error // The Module calls this
-	WriteHeaders() error
-	WriteData() error
+	// WriteHeaders() error
+	// WriteData() error
 	Open() error
 	Close() error
 }
