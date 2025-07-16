@@ -58,6 +58,15 @@ func ExcelReaderFactory(args map[string]any) (ports.InputInterface, error) {
 	if !ok {
 		return nil, fmt.Errorf("'headerRow' is required and must be a int: %v", reflect.TypeOf(args["header_row"]))
 	}
+	ColumnDefault := 1
+	ColumnStart, ok := args["start_column"].(float64)
+	if !ok {
+		return nil, fmt.Errorf("'headerRow' is required and must be a int: %v", reflect.TypeOf(args["header_row"]))
+	}
+	if ColumnStart != 0 {
+		ColumnDefault = int(ColumnStart)
+	}
+
 	sheetName, ok := args["sheet_name"].(string)
 	if !ok || sheetName == "" {
 		return nil, fmt.Errorf("'sheet_name' is required and must be a string")
@@ -67,6 +76,7 @@ func ExcelReaderFactory(args map[string]any) (ports.InputInterface, error) {
 		HeaderRow: int(headerRow),
 		FilePath:  filePath,
 		BaseInput: &BaseInput{},
+		StartColumn: ColumnDefault,
 	}, nil
 }
 
@@ -75,10 +85,24 @@ func ExcelAdapterFactory(args map[string]any, payload map[string]*df.Dataframe) 
 	if !ok || filePath == "" {
 		return nil, fmt.Errorf("'filepath' is required and must be a string")
 	}
+	HeaderDefault := 1
 	headerRow, ok := args["header_row"].(float64)
 	if !ok {
 		return nil, fmt.Errorf("'headerRow' is required and must be a int: %v", reflect.TypeOf(args["header_row"]))
 	}
+	if headerRow != 0 {
+		HeaderDefault = int(headerRow)
+	}
+
+	ColumnDefault := 1
+	ColumnStart, ok := args["start_column"].(float64)
+	if !ok {
+		ColumnDefault = 1
+	}
+	if ColumnStart != 0 {
+		ColumnDefault = int(ColumnStart)
+	}
+
 	saveMode, ok := args["save_mode"].(string)
 	if !ok {
 		saveMode = ""
@@ -100,12 +124,13 @@ func ExcelAdapterFactory(args map[string]any, payload map[string]*df.Dataframe) 
 		Data: payload,
 		FilePath: filePath,
 		SheetsOrder: sheetOrderString,
-		HeaderRow: int(headerRow),
+		HeaderRow: HeaderDefault,
+		StartColumn: ColumnDefault,
 		SaveMode:saveMode,
 	}, nil
 }
 
-
+//Helper Function to convert interface slices to strings
 func InterfaceSliceToStringSlice(raw []interface{}) ([]string, error) {
 	strs := make([]string, len(raw))
 	for i, v := range raw {
