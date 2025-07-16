@@ -16,6 +16,7 @@ type XLSXWriter struct {
 	Template 	map[string]excelize.Style
 	SaveMode 	string //Opional - default multisheet
 	HeaderRow 	int
+	StartColumn	int
 	ActiveSheet string
 }
 
@@ -29,7 +30,7 @@ func (x *XLSXWriter) createSheet(sheet string,data *df.Dataframe) (int,error) {
 	if err != nil{
 		return 0,fmt.Errorf("error while creating sheet: %v", err)
 	}
-	startCell, err := excelize.CoordinatesToCellName(1,x.HeaderRow)
+	startCell, err := excelize.CoordinatesToCellName(x.StartColumn,x.HeaderRow)
 	if err != nil{
 		return 0,fmt.Errorf("error while inserting headers to sheet %v: %v",sheet, err)
 	}
@@ -44,11 +45,11 @@ func (x *XLSXWriter) createSheet(sheet string,data *df.Dataframe) (int,error) {
 	rowCount := data.RowCount()
 	for i := 0; i < rowCount; i++{
 		row := data.RowSlice(i)
-		rowData := make([]interface{}, len(data.RowSlice(i)))
+		rowData := make([]interface{}, len(row)) 
 		for idx,value := range row {
 			rowData[idx] = value	
 		} 
-		cell, _ := excelize.CoordinatesToCellName(1,x.HeaderRow+i+1)
+		cell, _ := excelize.CoordinatesToCellName(x.StartColumn,x.HeaderRow+i+1)
 		if err := x.file.SetSheetRow(sheet,cell, &rowData); err != nil{
 			return	0,fmt.Errorf("error while inserting headers to sheet %v: %v",sheet, err)
 		}

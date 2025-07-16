@@ -15,6 +15,7 @@ type XLSXReader struct {
 	SheetName string
 	file      *excelize.File
 	HeaderRow int
+	StartColumn	int
 	rows      [][]string
 	BaseInput *BaseInput
 }
@@ -63,17 +64,41 @@ func (x *XLSXReader) Open() error {
 		return err
 	}
 	x.file = f
-	row, err := x.file.GetRows(x.SheetName)
+	rows, err := x.file.GetRows(x.SheetName)
 	if err != nil {
 		return err
 	}
-	if len(row) <= 0 {
+	if len(rows) <= 0 {
 		return fmt.Errorf("file has no data")
 	}
-	x.rows = row
+
+	// Determine max columns after trimming start column
+	maxCols := 0
+	trimmed := make([][]string, 0, len(rows))
+	for _, r := range rows {
+		var rowSlice []string
+		if len(r) >= x.StartColumn {
+			rowSlice = r[x.StartColumn-1:]
+		} else {
+			rowSlice = []string{}
+		}
+		if len(rowSlice) > maxCols {
+			maxCols = len(rowSlice)
+		}
+		trimmed = append(trimmed, rowSlice)
+	}
+
+	// Pad rows with fewer columns with empty strings
+	for i, r := range trimmed {
+		if len(r) < maxCols {
+			pad := make([]string, maxCols - len(r))
+			trimmed[i] = append(r, pad...)
+		}
+	}
+
+	x.rows = trimmed
 	return nil
 }
-
 func (x *XLSXReader) GetHeaders() ([]string, error) {
 	if len(x.rows) > 0 {
 		return x.rows[x.HeaderRow-1], nil

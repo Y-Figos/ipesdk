@@ -302,8 +302,12 @@ func (df *Dataframe) RowSliceAny(i int) []any {
 func (df *Dataframe) RowSlice(i int) []string {
 	row := make([]string, 0, len(df.Columns))
 	for _, col := range df.ColumnOrder {
-		val := df.Columns[col].DataSlice()[i]
-		row = append(row, fmt.Sprint(val))
+		data := df.Columns[col].DataSlice()
+		if i < len(data) {
+			row = append(row, fmt.Sprint(data[i]))
+		} else {
+			row = append(row, "") // or some default value
+		}
 	}
 	return row
 }
