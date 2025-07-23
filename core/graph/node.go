@@ -8,6 +8,7 @@ import (
 	"github.com/Y-Figos/ipesdk/core/adapters"
 	"github.com/Y-Figos/ipesdk/core/df"
 	"github.com/Y-Figos/ipesdk/core/engine"
+	"github.com/Y-Figos/ipesdk/utils"
 	lua "github.com/yuin/gopher-lua"
 )
 
@@ -23,17 +24,18 @@ const (
 type OutputType string
 
 type NodeModule struct {
-	ModuleName string
-	ScriptPath string
-	Depends    []*NodeModule
-	Children   []*NodeModule
-	DataOutput string
-	Adapter    string
-	InArgs     map[string]any
+	ModuleName 	string
+	ScriptPath 	string
+	Depends     []*NodeModule
+	Children    []*NodeModule
+	DataOutput 	string
+	Adapter    	string
+	InArgs     	map[string]any
 	OutArgs     map[string]any
 	Payloads    map[string]*df.Dataframe
-	Status     ModuleStatus
-	ExportFlag bool
+	Status     	ModuleStatus
+	L			*lua.LState
+	ExportFlag 	bool
 }
 
 func registerPayload(L *lua.LState, name string, dataframe *df.Dataframe) {
@@ -46,9 +48,13 @@ func registerPayload(L *lua.LState, name string, dataframe *df.Dataframe) {
 func (nm *NodeModule) Run() ModuleStatus {
 	nm.Status = StatusRunning
 
-	L := lua.NewState()
-	defer L.Close()
-	engine.CreateLuaEnv(L)
+	nm.L = lua.NewState()
+	defer func() {
+		if !nm.ExportFlag {
+			nm.L.Close()
+		}
+	}()
+	engine.CreateLuaEnv(nm.L)
 
 	if nm.Adapter != "" {
 		factory, ok := adapters.InputAdapterRegistry[nm.Adapter]
@@ -69,7 +75,7 @@ func (nm *NodeModule) Run() ModuleStatus {
 		nm.Payloads = map[string]*df.Dataframe{ //df.Dataframe is not a type
     	nm.ModuleName + "_input": dataframe,
 		}
-		registerPayload(L, nm.ModuleName + "_input", dataframe)
+		registerPayload(nm.L, nm.ModuleName + "_input", dataframe)
 	}
 
 	for _, dependency := range nm.Depends {
@@ -81,28 +87,28 @@ func (nm *NodeModule) Run() ModuleStatus {
 		if dependency.Payloads != nil {
     	for name, dataframe := range dependency.Payloads {
         if nm.Payloads == nil {
-            nm.Payloads = make(map[string]*df.Dataframe) //df.Dataframe is not a type
+            nm.Payloads = make(map[string]*df.Dataframe)
         }
         nm.Payloads[name] = dataframe
-        registerPayload(L, name, dataframe)
+        registerPayload(nm.L, name, dataframe)
     }
 }
 	}
 
 	// Load the Lua script
-	if err := L.DoFile(nm.ScriptPath); err != nil {
+	if err := nm.L.DoFile(nm.ScriptPath); err != nil {
 		log.Printf("[Module %s] Lua error: %v", nm.ModuleName, err)
 		nm.Status = StatusFailed
 		return StatusFailed
 	}
 
-	fn := L.GetGlobal("main")
+	fn := nm.L.GetGlobal("main")
 	if fn.Type() != lua.LTFunction {
 		log.Printf("main is not a function in module %s", nm.ModuleName)
 		nm.Status = StatusFailed
 		return StatusFailed
 	}
-	err := L.CallByParam(lua.P{
+	err := nm.L.CallByParam(lua.P{
 		Fn:      fn,
 		NRet:    1,    // expecting 1 return value
 		Protect: true, // handle errors
@@ -114,8 +120,8 @@ func (nm *NodeModule) Run() ModuleStatus {
 		return StatusFailed
 	}
 
-	ret := L.Get(-1)
-	L.Pop(1)
+	ret := nm.L.Get(-1)
+	nm.L.Pop(1)
 
 	nm.Payloads = make(map[string]*df.Dataframe)
 
@@ -139,16 +145,17 @@ func (nm *NodeModule) Run() ModuleStatus {
 			}
 		})
 
-default:
-    log.Printf("main() did not return a dataframe or table")
-    nm.Status = StatusFailed
-    return StatusFailed
-}
+	default:
+		log.Printf("main() did not return a dataframe or table")
+		nm.Status = StatusFailed
+		return StatusFailed
+	}
 	nm.Status = StatusSuccess
 	return StatusSuccess
 }
 
 func (nm *NodeModule) Export() error {
+	defer nm.L.Close()
 	if nm.DataOutput == "" {
 		return errors.New("no Output was set")
 	}
@@ -161,6 +168,14 @@ func (nm *NodeModule) Export() error {
 	// if !ok {
 	// 	return errors.New("no 'output' payload to export")
 	// }
+	
+	//Export hook runs here, and pushs results to nm.outArgs
+	if nm.OutArgs["use_export_hook"].(bool){
+		err := nm.export_hook()
+		if err != nil {
+			return err
+		}
+	}
 	outadapter, err := factory(nm.OutArgs, nm.Payloads)
 	if err != nil {
 		return fmt.Errorf("failed to create output adapter: %w", err)
@@ -171,5 +186,41 @@ func (nm *NodeModule) Export() error {
 	if err := outadapter.ExportData(); err != nil {
 		return fmt.Errorf("failed to export data: %w", err)
 	}
+	
+	return nil
+}
+
+func (nm *NodeModule) export_hook() error {
+
+	fn := nm.L.GetGlobal("export_hook")
+	if fn.Type() != lua.LTFunction {
+		return fmt.Errorf("export_hook is not a function in module %s", nm.ModuleName)
+	}
+
+	err := nm.L.CallByParam(lua.P{
+		Fn:      fn,
+		NRet:    1,    // expecting 1 return value
+		Protect: true, // handle errors
+	})
+
+	if err != nil {
+		return fmt.Errorf("error while executing export_hook of %s: %v", nm.ModuleName, err)
+	}
+
+	ret := nm.L.Get(-1)
+	nm.L.Pop(1)
+	tbl, ok := ret.(*lua.LTable)
+	if !ok{
+		return  fmt.Errorf("export_hook of %s did not return a table: %w", nm.ModuleName, err)
+	}
+	if nm.OutArgs == nil {
+    nm.OutArgs = make(map[string]interface{})
+	}
+	tbl.ForEach(func(key, value lua.LValue) {
+			name := key.String()
+			convertedValue := utils.ConvertLuaTypeToGoType(value)
+			nm.OutArgs[name] = convertedValue
+	})
+	
 	return nil
 }
