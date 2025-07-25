@@ -47,7 +47,6 @@ var runTool = &cobra.Command{
 				}
 			}
 		}
-
 		return nil		
 	} ,
 }
