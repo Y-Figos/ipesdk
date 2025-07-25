@@ -54,7 +54,7 @@ func columnUnique(L *lua.LState) int {
 	data := column.Unique()
 	table := L.NewTable()
 	for i, v := range data {
-		L.RawSet(table, lua.LNumber(i+1), utils.ConvertAnytoLuaType(v))
+		L.RawSet(table, lua.LNumber(i+1), utils.ConvertAnytoLuaType(L,v))
 	}
 	L.Push(table)
 	return 1
@@ -66,7 +66,7 @@ func columnData(L *lua.LState) int {
 
 	table := L.NewTable()
 	for i, v := range data {
-		L.RawSet(table, lua.LNumber(i+1), utils.ConvertAnytoLuaType(v))
+		L.RawSet(table, lua.LNumber(i+1), utils.ConvertAnytoLuaType(L,v))
 	}
 	L.Push(table)
 	return 1
@@ -79,7 +79,7 @@ func columnGet(L *lua.LState) int {
 	index := L.CheckInt(2)
 
 	value := column.GetValue(index)
-	L.Push(utils.ConvertAnytoLuaType(value))
+	L.Push(utils.ConvertAnytoLuaType(L,value))
 	return 1
 }
 

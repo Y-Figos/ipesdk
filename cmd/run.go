@@ -36,17 +36,7 @@ var runTool = &cobra.Command{
 		dag := graph.BuildGraph(manifest)
 
 		dag.Run()
-
-		if export {
-			for _, node := range dag.Nodes{
-				if node.ExportFlag{
-					err := node.Export()
-					if err != nil {
-						return err
-					}
-				}
-			}
-		}
+		
 		return nil		
 	} ,
 }

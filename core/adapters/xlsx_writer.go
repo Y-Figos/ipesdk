@@ -58,7 +58,7 @@ func (x *XLSXWriter) createSheet(sheet string,data *df.Dataframe) (int,error) {
 	return index, nil 
 }
 
-func (x *XLSXWriter) ExportData() error {
+func (x *XLSXWriter) ExportData() (map[string]any, error) {
 	switch x.SaveMode {
 		case "multi_sheet":
 			x.Open()
@@ -66,11 +66,11 @@ func (x *XLSXWriter) ExportData() error {
 			for _,sheet := range x.SheetsOrder{
 			data, ok := x.Data[sheet]
 			if !ok {
-				return fmt.Errorf("%v sheet not in payload, be sure the sheetnames and payloads have the same name", sheet)
+				return nil,fmt.Errorf("%v sheet not in payload, be sure the sheetnames and payloads have the same name", sheet)
 			}
 			index, err := x.createSheet(sheet, data); 
 			if err != nil{
-				return err
+				return nil,err
 			}
 			sheetMap[sheet] = index
 			}
@@ -81,47 +81,58 @@ func (x *XLSXWriter) ExportData() error {
 
 			x.file.SetActiveSheet(activeIndex)
 			if err := x.file.DeleteSheet("Sheet1"); err != nil{
-				return fmt.Errorf("error closing exported file: %v", err)
+				return nil,fmt.Errorf("error closing exported file: %v", err)
 			}
 			if err := x.file.SaveAs(x.FilePath); err != nil {
-				return fmt.Errorf("error closing exported file: %v", err)
+				return nil,fmt.Errorf("error closing exported file: %v", err)
 			}
-			return nil
+			return map[string]any{
+			"mode":        "multi_sheet",
+			"file_path":   x.FilePath,
+			"sheet_names": x.SheetsOrder,
+			"active":      x.ActiveSheet,
+			}, nil
 		case "multi_file":
 			info, err := os.Stat(x.FilePath)
 				if err != nil {
-					return err // path might not exist
+					return nil,err // path might not exist
 				}
 			if !info.IsDir(){
-				return fmt.Errorf("path must be a directory")
+				return nil,fmt.Errorf("path must be a directory")
 			}
 			if _, err := os.Stat(x.FilePath); os.IsNotExist(err) {
 				if err := os.MkdirAll(x.FilePath, os.ModePerm); err != nil {
-					return fmt.Errorf("failed to create output directory: %w", err)
+					return nil,fmt.Errorf("failed to create output directory: %w", err)
 				}
 			}
+			exportedPaths := []string{}
 			for name,data := range x.Data {
 				tempFileName := filepath.Join(x.FilePath,name +".xlsx")	
 				if err := x.Open(); err != nil {
-					return fmt.Errorf("failed to open Excel file: %w", err)
+					return nil,fmt.Errorf("failed to open Excel file: %w", err)
 				}
 				index, err := x.createSheet(name, data) 
 				if err != nil {
-					return err
+					return nil,err
 				}
 				x.file.SetActiveSheet(index)
 				if err := x.file.DeleteSheet("Sheet1"); err != nil{
-					return fmt.Errorf("error closing exported file: %v", err)
+					return nil,fmt.Errorf("error closing exported file: %v", err)
 				}
 				if err := x.file.SaveAs(tempFileName); err != nil {
-					return err
+					return nil,err
 				}
-				
+				exportedPaths = append(exportedPaths, tempFileName)
 			}
 			
-			return nil
+			return map[string]any{
+			"mode":         "multi_file",
+			"directory":    x.FilePath,
+			"file_paths":   exportedPaths,
+			"sheet_count":  len(exportedPaths),
+		}, nil
 	default:
-		return fmt.Errorf("invalid save mode: %s", x.SaveMode)
+		return nil, fmt.Errorf("invalid save mode: %s", x.SaveMode)
 	}
 }
 

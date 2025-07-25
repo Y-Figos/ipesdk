@@ -15,7 +15,7 @@ type InputInterfaceBatchReader interface {
 	ReadBatch(n int) ([][]string, error) 
 }
 type OutputInterface interface{
-	ExportData() error // The Module calls this
+	ExportData() (map[string]any, error) // The Module calls this
 	// WriteHeaders() error
 	// WriteData() error
 	Open() error
