@@ -50,26 +50,26 @@ func (c *CSVWriter) WriteHeaders() error{
 	return nil
 }
 
-func (c *CSVWriter) ExportData() error{
+func (c *CSVWriter) ExportData() (map[string]any, error){
 
 	if c.FilePath == ""{
-		return errors.New("CSVWriter.ExportData(): Must specify Path")
+		return nil, errors.New("CSVWriter.ExportData(): Must specify Path")
 	}
 	err := c.Open()
 	if err != nil{
-		return err
+		return nil, err
 	}
 	defer c.Close()
 
 	defer c.Writer.Flush()
 	err = c.WriteHeaders()
 	if err != nil{
-		return err
+		return nil,  err
 	}
 	err = c.WriteData()
 	if err != nil{
-		return err
+		return nil,  err
 	}
 		
-	return nil
+	return nil, nil 
 }

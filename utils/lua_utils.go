@@ -5,7 +5,7 @@ import(
 	"fmt"
 )
 
-func ConvertAnytoLuaType(val any) lua.LValue{
+func ConvertAnytoLuaType(L *lua.LState,val any) lua.LValue{
 	var luaVal lua.LValue
     switch v := val.(type) {
     case string:
@@ -16,9 +16,27 @@ func ConvertAnytoLuaType(val any) lua.LValue{
         luaVal = lua.LNumber(v)
     case bool:
         luaVal = lua.LBool(v)
-    default:
-        luaVal = lua.LString(fmt.Sprintf("%v", v)) // fallback to string
-    }
+    case []string:
+		tbl := L.NewTable()
+		for i, s := range v {
+			tbl.RawSetInt(i+1, lua.LString(s)) // Lua is 1-indexed
+		}
+		return tbl
+	case []any:
+		tbl := L.NewTable()
+		for i, item := range v {
+			tbl.RawSetInt(i+1, ConvertAnytoLuaType(L, item))
+		}
+		return tbl
+	case map[string]any:
+		tbl := L.NewTable()
+		for key, val := range v {
+			tbl.RawSetString(key, ConvertAnytoLuaType(L, val)) // recursive call
+		}
+		return tbl
+	default:
+		return lua.LString(fmt.Sprintf("%v", v))
+	}
 
 	return luaVal
 }

@@ -8,8 +8,11 @@ import (
 
 	fh "github.com/Y-Figos/ipesdk/internal/file_handler"
 )
-
+type RuntimeContext struct {
+	Global map[string]any
+}
 type DAG struct {
+	
 	Nodes  map[string]*NodeModule
 	Edges  map[string][]string
 	Sorted [][]*NodeModule
@@ -19,7 +22,9 @@ func BuildGraph(manifest *fh.Manifest) *DAG {
 	dag := DAG{Nodes: make(map[string]*NodeModule),
 		Edges: make(map[string][]string)}
 	root := filepath.Dir(manifest.ManifestPath)
-
+	ctx := &RuntimeContext{
+	Global: make(map[string]any),
+	}
 	for _, node := range manifest.NodeList {
 		var output string
 		if node.OutputArgs != nil{
@@ -33,6 +38,7 @@ func BuildGraph(manifest *fh.Manifest) *DAG {
 			ScriptPath: filepath.Join(root, "modules", node.Id, "script.lua"),
 			DataOutput: output,
 			ExportFlag: node.ExportFlag,
+			Context: ctx,
 		}
 		dag.Nodes[node.Id] = newModule
 	}

@@ -193,7 +193,7 @@ func (c* Column[T]) LuaApply(L *lua.LState, predicate *lua.LFunction, optional_h
 		header = optional_header[0]
 	}
 	for i, value := range c.Data{
-		luaArg := utils.ConvertAnytoLuaType(value)
+		luaArg := utils.ConvertAnytoLuaType(L,value)
 		err := L.CallByParam(lua.P{
 			Fn: predicate,
 			NRet: 1,
@@ -355,7 +355,7 @@ func (df *Dataframe) FilterLua(L *lua.LState, fn *lua.LFunction) (*Dataframe, er
 		// Construct row table for Lua
 		for name, col := range df.Columns {
 			goVal := col.GetValue(i)
-			luaVal := utils.ConvertAnytoLuaType(goVal)
+			luaVal := utils.ConvertAnytoLuaType(L,goVal)
 			L.SetField(luaRow, name, luaVal)
 		}
 
