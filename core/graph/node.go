@@ -4,10 +4,10 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"github.com/Y-Figos/ipesdk/utils"
 	"github.com/Y-Figos/ipesdk/core/adapters"
 	"github.com/Y-Figos/ipesdk/core/df"
 	"github.com/Y-Figos/ipesdk/core/engine"
+	"github.com/Y-Figos/ipesdk/utils"
 	lua "github.com/yuin/gopher-lua"
 )
 
@@ -38,46 +38,34 @@ type NodeModule struct {
 	Context *RuntimeContext
 }
 
-
-func (nm *NodeModule) Run() ModuleStatus {
-	nm.Status = StatusRunning
-	nm.LuaManager = engine.NewLuaManager()
-	nm.LuaManager.L = lua.NewState()
-	defer func() {
-		if !nm.ExportFlag {
-			nm.LuaManager.L.Close()
-		}
-	}()
-	nm.LuaManager.CreateLuaEnv()
-	nm.LuaManager.InjectContextTable(nm.Context.Global)
-	
-	if nm.Adapter != "" {
-		factory, ok := adapters.InputAdapterRegistry[nm.Adapter]
-		if !ok {
-			log.Printf("Adapter %v of %v do not exist", nm.Adapter, nm.ModuleName)
-			return StatusFailed
-		}
-		adapter, err := factory(nm.InArgs)
-		if err != nil {
-			log.Printf("Adapter %v of %v: Error while creating adapter - %v ", nm.Adapter, nm.ModuleName, err)
-			return StatusFailed
-		}
-		dataframe, err := adapter.GetData()
-		if err != nil {
-			log.Printf("Adapter %v of %v: Error while creating adapter - %v ", nm.Adapter, nm.ModuleName, err)
-			return StatusFailed
-		}
-		nm.Payloads = map[string]*df.Dataframe{ //df.Dataframe is not a type
-    	nm.ModuleName + "_input": dataframe,
-		}
-		nm.LuaManager.RegisterPayload(nm.ModuleName + "_input", dataframe)
+func (nm *NodeModule) registerAdapterInput() error {
+	if nm.Adapter == "" {
+		return nil
 	}
+	factory, ok := adapters.InputAdapterRegistry[nm.Adapter]
+	if !ok {
+		return fmt.Errorf("adapter %v of %v do not exist", nm.Adapter, nm.ModuleName)
+	}
+	adapter, err := factory(nm.InArgs)
+	if err != nil {
+		return fmt.Errorf("adapter %v of %v: Error while creating adapter - %v ", nm.Adapter, nm.ModuleName, err)
+	}
+	dataframe, err := adapter.GetData()
+	if err != nil {
+		return fmt.Errorf("adapter %v of %v: Error while creating adapter - %v ", nm.Adapter, nm.ModuleName, err)
+	}
+	if nm.Payloads == nil {
+		nm.Payloads = make(map[string]*df.Dataframe)
+	}
+	nm.Payloads[nm.ModuleName+"_input"] = dataframe
+	nm.LuaManager.RegisterPayload(nm.ModuleName + "_input", dataframe)
+	return nil
+}
 
+func (nm *NodeModule) resolveDependencies() error {
 	for _, dependency := range nm.Depends {
 		if dependency.Status == StatusFailed {
-			log.Printf("dependecy %v of %v did not succeed", dependency.ModuleName, nm.ModuleName)
-			nm.Status = StatusFailed
-			return StatusFailed
+			return fmt.Errorf("dependecy %v of %v did not succeed", dependency.ModuleName, nm.ModuleName)
 		}
 		if dependency.Payloads != nil {
     		for name, dataframe := range dependency.Payloads {
@@ -86,26 +74,23 @@ func (nm *NodeModule) Run() ModuleStatus {
 				}
 			nm.Payloads[name] = dataframe
 			nm.LuaManager.RegisterPayload(name, dataframe)
-    	}
+    		}
+		}
 	}
-	}
+	return nil
+}
 
-	nm.LuaManager.LoadScript(nm.ScriptPath)
-	ret, err := nm.LuaManager.CallGlobalFunc("main", 1)
-	if err != nil{
-		return StatusFailed
+func (nm *NodeModule) resolveMainReturn(ret []lua.LValue) error {
+	if len(ret) == 0 || ret[0] == lua.LNil {
+		return nil
 	}
-	
-	nm.Payloads = make(map[string]*df.Dataframe)
-
 	switch val := ret[0].(type) {
 	case *lua.LUserData:
 		if df, ok := val.Value.(*df.Dataframe); ok {
 			 nm.Payloads[nm.ModuleName + "payload"] = df
 		} else {
 			log.Printf("Returned value is not a Dataframe")
-			nm.Status = StatusFailed
-			return StatusFailed
+			return fmt.Errorf("returned value is not a Dataframe")
 		}
 
 	case *lua.LTable:
@@ -117,10 +102,39 @@ func (nm *NodeModule) Run() ModuleStatus {
 				}
 			}
 		})
+	return nil
+	}
+	return fmt.Errorf("main() did not return a dataframe or table")
+}
 
-	default:
-		log.Printf("main() did not return a dataframe or table")
-		nm.Status = StatusFailed
+func (nm *NodeModule) Run() ModuleStatus {
+	nm.Status = StatusRunning
+	nm.LuaManager = engine.NewLuaManager(nm.Context.Global)
+	
+	defer nm.LuaManager.L.Close()
+	
+	err := nm.registerAdapterInput()
+	if  err != nil{
+		log.Printf("error registering payload input %s", err)
+		return StatusFailed
+	}
+	
+	err = nm.resolveDependencies()
+	if  err != nil{
+		log.Printf("error registering payload input %s", err)
+		return StatusFailed
+	}
+	
+	nm.LuaManager.LoadScript(nm.ScriptPath)
+
+	ret, err := nm.LuaManager.CallGlobalFunc("main", 1)
+	if err != nil{
+		log.Printf("error calling main function input %s", err)
+		return StatusFailed
+	}
+	err = nm.resolveMainReturn(ret)
+	if err != nil{
+		log.Printf("returned invalid value: %s", err)
 		return StatusFailed
 	}
 	
@@ -130,13 +144,11 @@ func (nm *NodeModule) Run() ModuleStatus {
 			return StatusFailed
 		}
 	}
-	
 	nm.Status = StatusSuccess
 	return nm.Status
 }
 
 func (nm *NodeModule) Export() error {
-	defer nm.LuaManager.L.Close()
 	if nm.DataOutput == "" {
 		return errors.New("no Output was set")
 	}
@@ -146,7 +158,7 @@ func (nm *NodeModule) Export() error {
 			return errors.New("output not valid")
 	}
 	//Export hook runs here, and pushs results to nm.outArgs
-	if nm.OutArgs["use_export_hook"].(bool){
+	if useHook, ok := nm.OutArgs["use_export_hook"].(bool); ok && useHook {
 		err := nm.export_hook()
 		if err != nil {
 			return err
@@ -162,7 +174,6 @@ func (nm *NodeModule) Export() error {
 	if nm.Context.Global[nm.ModuleName+".export"], err = outadapter.ExportData(); err != nil {
 		return fmt.Errorf("failed to export data: %w", err)
 	} 
-	
 	return nil
 }
 

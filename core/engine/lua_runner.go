@@ -12,10 +12,11 @@ import (
 type LuaManager struct{
 	L *lua.LState
 }
-func NewLuaManager() *LuaManager {
+func NewLuaManager(globalContext map[string]any) *LuaManager {
 	L := lua.NewState()
 	lm := &LuaManager{L: L}
 	lm.CreateLuaEnv()
+	lm.InjectContextTable(globalContext)
 	return lm 
 }
 func (lm *LuaManager) CreateLuaEnv() {
@@ -53,7 +54,7 @@ func (lm *LuaManager) LoadScript(scriptPath string) error {
 func (lm *LuaManager) CallGlobalFunc(name string, nrets int) ([]lua.LValue, error){
 	fn := lm.L.GetGlobal(name)
 	if fn.Type() != lua.LTFunction{
-		return nil, fmt.Errorf("%v is not a function", name)
+		return nil, nil
 	}
 	err := lm.L.CallByParam(lua.P{
 		Fn: fn,
@@ -65,8 +66,12 @@ func (lm *LuaManager) CallGlobalFunc(name string, nrets int) ([]lua.LValue, erro
 	}
 	results := make([]lua.LValue, nrets)
 	for i := nrets - 1; i >= 0; i-- {
-		results[i] = lm.L.Get(-1)
-		lm.L.Pop(1)
+		if lm.L.GetTop() > 0 {
+			results[i] = lm.L.Get(-1)
+			lm.L.Pop(1)
+		} else {
+			results[i] = lua.LNil // Default to nil if no value
+		}
 	}
 	return results, nil
 
