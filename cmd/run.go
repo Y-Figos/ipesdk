@@ -3,7 +3,7 @@ package cmd
 import (
 	// "os"
 	"path/filepath"
-	"github.com/Y-Figos/ipesdk/internal/file_handler"
+	"github.com/Y-Figos/ipesdk/core/file_handler"
 	"github.com/Y-Figos/ipesdk/core/graph"
 	"github.com/spf13/cobra"
 )

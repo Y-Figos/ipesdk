@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"sync"
 
-	fh "github.com/Y-Figos/ipesdk/internal/file_handler"
+	fh "github.com/Y-Figos/ipesdk/core/file_handler"
 )
 type RuntimeContext struct {
 	Global map[string]any
