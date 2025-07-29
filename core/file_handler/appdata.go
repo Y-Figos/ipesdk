@@ -33,9 +33,18 @@ func (fs *FolderStruct) Init() error {
 
 	if _, err := os.Stat(fs.ToolRegPath); os.IsNotExist(err){
 		log.Println("tool registry does not exist, creating file")
-		os.Create(fs.ToolRegPath)
-		data, _ := json.MarshalIndent(&ToolRegistry{make(map[string]ToolInfo)},"","")
-		os.WriteFile(fs.ToolRegPath, data, 0664)
+		f, err := os.Create(fs.ToolRegPath)
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+		data, err := json.MarshalIndent(&ToolRegistry{make(map[string]ToolInfo)},"","")
+		if err != nil {
+			return fmt.Errorf("failed to marshal empty registry: %w", err)
+		}
+		if err := os.WriteFile(fs.ToolRegPath, data, 0664); err != nil {
+			return fmt.Errorf("failed to write registry file: %w", err)
+		}
 	}
 	log.Println("folder structure initialized succssesfuly")
 	return nil

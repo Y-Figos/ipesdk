@@ -4,7 +4,7 @@ import (
 	"log"
 	"os"
 	"github.com/Y-Figos/ipesdk/cmd"
-	"github.com/Y-Figos/ipesdk/internal/file_handler"
+	"github.com/Y-Figos/ipesdk/core/file_handler"
 )
 func main()  {
 	fs := file_handler.FolderStruct{}
