@@ -104,7 +104,7 @@ func (nm *NodeModule) resolveMainReturn(ret []lua.LValue) error {
 		})
 	return nil
 	}
-	return fmt.Errorf("main() did not return a dataframe or table")
+	return fmt.Errorf("main() did not return a dataframe or table: %v", nm.ModuleName)
 }
 
 func (nm *NodeModule) Run() ModuleStatus {
@@ -132,6 +132,7 @@ func (nm *NodeModule) Run() ModuleStatus {
 		log.Printf("error calling main function input %s", err)
 		return StatusFailed
 	}
+	log.Println(ret[0].String())
 	err = nm.resolveMainReturn(ret)
 	if err != nil{
 		log.Printf("returned invalid value: %s", err)
