@@ -20,4 +20,5 @@ require (
 	golang.org/x/crypto v0.38.0 // indirect
 	golang.org/x/net v0.40.0 // indirect
 	golang.org/x/text v0.25.0 // indirect
+	github.com/stretchr/testify v1.10.0 // indirect
 )

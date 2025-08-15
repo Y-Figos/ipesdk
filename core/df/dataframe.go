@@ -9,21 +9,21 @@ import (
 	"strings"
 
 	"github.com/Y-Figos/ipesdk/utils"
-	"github.com/yuin/gopher-lua"
+	lua "github.com/yuin/gopher-lua"
 )
 
-type ColumnInterface interface{
+type ColumnInterface interface {
 	HeaderName() string
 	Type() reflect.Type
 	Len() int
 	DataSlice() []any
 	AppendValue(any) error
 	GetValue(int) any
-	EmptyClone() ColumnInterface 
+	EmptyClone() ColumnInterface
 	Map(map[any]any, ...string) ColumnInterface
-	Unique() []any 
-	Apply(func(any) any, ...string ) ColumnInterface
-	LuaApply( *lua.LState, *lua.LFunction, ...string ) (ColumnInterface, error)
+	Unique() []any
+	Apply(func(any) any, ...string) ColumnInterface
+	LuaApply(*lua.LState, *lua.LFunction, ...string) (ColumnInterface, error)
 }
 
 type Column[T comparable] struct{
@@ -32,7 +32,7 @@ type Column[T comparable] struct{
 	GoType 		reflect.Type
 }
 
-func (c *Column[T]) EmptyClone() ColumnInterface{
+func (c *Column[T]) EmptyClone() ColumnInterface {
 	return NewColumn(c.Header, make([]T, 0))
 }
 
@@ -40,15 +40,15 @@ func (c *Column[T]) GetValue(index int) any {
 	return c.Data[index]
 }
 
-func (c Column[T]) HeaderName() string{
+func (c Column[T]) HeaderName() string {
 	return c.Header
 }
 
-func (c Column[T]) Type() reflect.Type{
+func (c Column[T]) Type() reflect.Type {
 	return c.GoType
 }
 
-func (c Column[T]) Len() int{
+func (c Column[T]) Len() int {
 	return len(c.Data)
 }
 
@@ -140,40 +140,40 @@ func convertToString(val any) (any, error) {
 	}
 }
 
-func NewColumn[T comparable](header string, data []T) *Column[T]{
+func NewColumn[T comparable](header string, data []T) *Column[T] {
 	return &Column[T]{
 		Header: header,
-		Data: data,
-		GoType:  reflect.TypeOf((*T)(nil)).Elem(),
+		Data:   data,
+		GoType: reflect.TypeOf((*T)(nil)).Elem(),
 	}
 }
 
-func (c *Column[T]) Map(mapper map[any]any, optional_header ...string) ColumnInterface{
+func (c *Column[T]) Map(mapper map[any]any, optional_header ...string) ColumnInterface {
 	var zero T
 	header := c.Header + "_mapped"
-	if len(optional_header) > 0{
+	if len(optional_header) > 0 {
 		header = optional_header[0]
 	}
 
 	newColumn := NewColumn(header, []any{})
-		for _ ,data := range c.DataSlice() {
-			if mapper[data] != nil{
-				err := newColumn.AppendValue(mapper[data])
-				if err != nil{
-					log.Println(err)
-				}
-			}else {
+	for _, data := range c.DataSlice() {
+		if mapper[data] != nil {
+			err := newColumn.AppendValue(mapper[data])
+			if err != nil {
+				log.Println(err)
+			}
+		} else {
 
-				err := newColumn.AppendValue(zero)
-				if err != nil{
-					log.Println(err)
-				}
+			err := newColumn.AppendValue(zero)
+			if err != nil {
+				log.Println(err)
 			}
 		}
+	}
 	return newColumn
 }
 
-func (c* Column[T]) Apply(predicate func(data any) any, optional_header ...string) ColumnInterface{
+func (c *Column[T]) Apply(predicate func(data any) any, optional_header ...string) ColumnInterface {
 	header := "new_" + c.Header
 	data := make([]any, len(c.Data))
 	if len(optional_header) > 0 {
@@ -186,7 +186,7 @@ func (c* Column[T]) Apply(predicate func(data any) any, optional_header ...strin
 	return NewColumn(header, data)
 }
 
-func (c* Column[T]) LuaApply(L *lua.LState, predicate *lua.LFunction, optional_header ...string) (ColumnInterface, error){
+func (c *Column[T]) LuaApply(L *lua.LState, predicate *lua.LFunction, optional_header ...string) (ColumnInterface, error) {
 	data := make([]any, len(c.Data))
 	header := "new_" + c.Header
 	if len(optional_header) > 0 {
@@ -195,11 +195,11 @@ func (c* Column[T]) LuaApply(L *lua.LState, predicate *lua.LFunction, optional_h
 	for i, value := range c.Data{
 		luaArg := utils.ConvertAnytoLuaType(L,value)
 		err := L.CallByParam(lua.P{
-			Fn: predicate,
-			NRet: 1,
+			Fn:      predicate,
+			NRet:    1,
 			Protect: true,
 		}, luaArg)
-		if err != nil{
+		if err != nil {
 			return nil, fmt.Errorf("error applying function at row %d: %v", i, err)
 		}
 		result := L.Get(-1)
@@ -210,9 +210,9 @@ func (c* Column[T]) LuaApply(L *lua.LState, predicate *lua.LFunction, optional_h
 	return NewColumn(header, data), nil
 }
 
-func (c *Column[T]) Unique() []any{
-	seen :=  make(map[T]struct{})
-	var unique []any 
+func (c *Column[T]) Unique() []any {
+	seen := make(map[T]struct{})
+	var unique []any
 	for _, value := range c.Data {
 		if _, exist := seen[value]; !exist {
 			seen[value] = struct{}{}
@@ -222,46 +222,104 @@ func (c *Column[T]) Unique() []any{
 	return unique
 }
 
-
 func (c Column[T]) String() string {
 	var column strings.Builder
 	column.WriteString(fmt.Sprintf("\t%v\n", c.Header))
 
-	for _, value := range c.Data{
+	for _, value := range c.Data {
 		column.WriteString(fmt.Sprintf("\t%v\n", value))
 	}
 
 	return column.String()
 }
 
+// ----------------------------------------------------------------------------------------------
 type Dataframe struct {
 	ColumnOrder []string
-	Columns map[string]ColumnInterface
+	Columns     map[string]ColumnInterface
 }
 
+// TODO
 func (df Dataframe) String() string {
-	var dfString strings.Builder
-
-	// Adjust the width according to your data
-	const colWidth = 10
-
-	// Headers
-	for _, col := range df.Columns {
-		dfString.WriteString(fmt.Sprintf("%-*v|", colWidth, col.HeaderName()))
+	if len(df.Columns) == 0 {
+		return "Empty DataFrame"
 	}
-	dfString.WriteString("\n")
 
-	// Rows
-	for i := 0; i < df.RowCount(); i++ {
-		for _, value := range df.Row(i) {
-			dfString.WriteString(fmt.Sprintf("%-*v|", colWidth, value))
+	maxDisplayWidth := 15
+	maxDisplayRows := 10
+	colWidths := make(map[string]int, len(df.ColumnOrder))
+	for _, colName := range df.ColumnOrder {
+		maxLen := len(colName)
+		for _, val := range df.Columns[colName].DataSlice() {
+			strVal := fmt.Sprint(val)
+			if len(strVal) > maxLen {
+				maxLen = len(strVal)
+			}
 		}
-		dfString.WriteString("\n")
+		if maxLen > maxDisplayWidth {
+			maxLen = maxDisplayWidth
+		}
+		colWidths[colName] = maxLen
 	}
 
-	return dfString.String()
+	// 2️⃣ Build header
+	var out strings.Builder
+	out.WriteString("\n")
+	out.WriteString("\t")
+	for _, colName := range df.ColumnOrder {
+		width := colWidths[colName]
+		out.WriteString(fmt.Sprintf("%-*s", width, truncate(colName, width)))
+		out.WriteString("  ")
+	}
+	out.WriteString("\n")
+
+	// 3️⃣ Decide which rows to show
+	rowCount := df.RowCount()
+	rowsToShow := []int{}
+	if rowCount <= maxDisplayRows {
+		for i := 0; i < rowCount; i++ {
+			rowsToShow = append(rowsToShow, i)
+		}
+	} else {
+		head := maxDisplayRows / 2
+		tail := maxDisplayRows - head
+		for i := 0; i < head; i++ {
+			rowsToShow = append(rowsToShow, i)
+		}
+		rowsToShow = append(rowsToShow, -1) // marker for ellipsis
+		for i := rowCount - tail; i < rowCount; i++ {
+			rowsToShow = append(rowsToShow, i)
+		}
+	}
+
+	for _, rowIdx := range rowsToShow {
+		if rowIdx == -1 {
+			out.WriteString("...\n")
+			continue
+		}
+		out.WriteString(fmt.Sprintf("%d\t", rowIdx))
+		for _, colName := range df.ColumnOrder {
+			width := colWidths[colName]
+			val := fmt.Sprint(df.Columns[colName].GetValue(rowIdx))
+			out.WriteString(fmt.Sprintf("%-*s", width, truncate(val, width)))
+			out.WriteString("  ")
+		}
+		out.WriteString("\n")
+	}
+
+	return out.String()
 }
- 
+
+func truncate(s string, max int) string {
+	if len(s) > max {
+		if max <= 3 {
+			return s[:max]
+		}
+		return s[:max-3] + "..."
+	}
+	return s
+}
+
 func (df *Dataframe) Shape() (int, int) {
 	columns := df.ColumnCount()
 	rows := df.RowCount()
@@ -274,17 +332,17 @@ func (df *Dataframe) ColumnCount() int {
 }
 
 func (df *Dataframe) RowCount() int {
-    if len(df.Columns) == 0 {
-        return 0
-    }
-    // All columns same length - pick first
-    for _, col := range df.Columns {
-        return col.Len()
-    }
-    return 0
+	if len(df.Columns) == 0 {
+		return 0
+	}
+	// All columns same length - pick first
+	for _, col := range df.Columns {
+		return col.Len()
+	}
+	return 0
 }
 
-func (df *Dataframe) Row(i int) map[string]any{
+func (df *Dataframe) Row(i int) map[string]any {
 	row := make(map[string]any, len(df.Columns))
 	for _, col := range df.ColumnOrder {
 		row[df.Columns[col].HeaderName()] = df.Columns[col].DataSlice()[i]
@@ -313,32 +371,32 @@ func (df *Dataframe) RowSlice(i int) []string {
 }
 
 func (df *Dataframe) Filter(predicate func(map[string]any) bool) *Dataframe {
-    
+
 	newCols := make(map[string]ColumnInterface, len(df.Columns))
-    
+
 	for name, col := range df.Columns {
-        newCols[name] = col.EmptyClone()
-    }
-    
-    rowCount := df.RowCount()
-    row := make(map[string]any, len(df.Columns))
-    
-    for i := 0; i < rowCount; i++ {
-        // Build row without copying full columns
-        for name, col := range df.Columns {
-            row[name] = col.GetValue(i)
-        }
-        
-        if predicate(row) {
-            for name, col := range newCols {
-                col.AppendValue(row[name])
-            }
-        }
-    }
-    return &Dataframe{
-        ColumnOrder: df.ColumnOrder,
-        Columns:     newCols,
-    }
+		newCols[name] = col.EmptyClone()
+	}
+
+	rowCount := df.RowCount()
+	row := make(map[string]any, len(df.Columns))
+
+	for i := 0; i < rowCount; i++ {
+		// Build row without copying full columns
+		for name, col := range df.Columns {
+			row[name] = col.GetValue(i)
+		}
+
+		if predicate(row) {
+			for name, col := range newCols {
+				col.AppendValue(row[name])
+			}
+		}
+	}
+	return &Dataframe{
+		ColumnOrder: df.ColumnOrder,
+		Columns:     newCols,
+	}
 }
 
 func (df *Dataframe) FilterLua(L *lua.LState, fn *lua.LFunction) (*Dataframe, error) {
@@ -387,20 +445,18 @@ func (df *Dataframe) FilterLua(L *lua.LState, fn *lua.LFunction) (*Dataframe, er
 }
 
 func (df *Dataframe) Append(otherDf *Dataframe) error {
-	if !reflect.DeepEqual(df.ColumnOrder, otherDf.ColumnOrder){
+	if !reflect.DeepEqual(df.ColumnOrder, otherDf.ColumnOrder) {
 		return errors.New("dataframes must be equal to be appended")
 	}
 	for header, column := range df.Columns {
-		for _, value  := range otherDf.Columns[header].DataSlice(){
+		for _, value := range otherDf.Columns[header].DataSlice() {
 			column.AppendValue(value)
 		}
 	}
 	return nil
 }
 
-func (df *Dataframe) NewColumn(columnName string, newColumn ColumnInterface){
+func (df *Dataframe) NewColumn(columnName string, newColumn ColumnInterface) {
 	df.ColumnOrder = append(df.ColumnOrder, columnName)
 	df.Columns[columnName] = newColumn
 }
-
-
