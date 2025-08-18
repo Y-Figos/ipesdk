@@ -39,9 +39,16 @@ type NodeModule struct {
 	Context    *RuntimeContext
 }
 
-func (nm *NodeModule) readBatchFiles() error {
-
-	return nil
+func (nm *NodeModule) readBatchFiles(reader adapters.InputAdapterFactory) (*df.Dataframe, error) {
+	batchFileReader := adapters.BatchFileReader{
+		ReaderFactory: reader,
+		DirPath: nm.InArgs["filepath"].(string),
+	}
+	newDf, err := batchFileReader.MergeFiles(nm.InArgs)
+	if err != nil {
+		return nil, err
+	}
+	return newDf, nil
 }
 
 func (nm *NodeModule) getInputFromAdapter() (*df.Dataframe, error) {
@@ -52,6 +59,15 @@ func (nm *NodeModule) getInputFromAdapter() (*df.Dataframe, error) {
 	if !ok {
 		return nil, fmt.Errorf("adapter %v of %v do not exist", nm.Adapter, nm.ModuleName)
 	}
+
+	if nm.InArgs["batch_read"].(bool){
+		dataframe, err := nm.readBatchFiles(factory)
+		if err != nil {
+			return nil, err
+		}
+		return dataframe, nil
+	}
+
 	adapter, err := factory(nm.InArgs)
 	if err != nil {
 		return nil, fmt.Errorf("adapter %v of %v: Error while creating adapter - %v ", nm.Adapter, nm.ModuleName, err)

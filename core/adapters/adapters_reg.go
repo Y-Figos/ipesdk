@@ -69,7 +69,7 @@ func ExcelReaderFactory(args map[string]any) (ports.InputInterface, error) {
 
 	sheetName, ok := args["sheet_name"].(string)
 	if !ok || sheetName == "" {
-		return nil, fmt.Errorf("'sheet_name' is required and must be a string")
+		sheetName = ""
 	}
 	return &XLSXReader{
 		SheetName: sheetName,

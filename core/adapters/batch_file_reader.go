@@ -33,17 +33,17 @@ func (bf *BatchFileReader) getFileList() ([]string, error) {
 	return files, nil
 }
 
-func (bf *BatchFileReader) readBatchFiles(filesList []string, out_args map[string]any) ([]*df.Dataframe, error) {
+func (bf *BatchFileReader) readBatchFiles(filesList []string, in_args map[string]any) ([]*df.Dataframe, error) {
 	dfList := make([]*df.Dataframe, len(filesList))
 	for index, file := range filesList {
-		out_args["filepath"] = file
-		reader, err := bf.ReaderFactory(out_args)
+		in_args["filepath"] = file
+		reader, err := bf.ReaderFactory(in_args)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("error on file: %s: %v", file, err)
 		}
 		dataframe, err := reader.GetData()
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("error on file: %s: %v", file, err)
 		}
 		dfList[index] = dataframe
 	}
@@ -61,8 +61,12 @@ func (bf *BatchFileReader) MergeFiles(out_args map[string]any) (*df.Dataframe, e
 	}
 	mainDataframe := dfList[0] // first dataframe is the main one
 
-	for i := 1; i > len(dfList); i++ {
+	for i := 1; i < len(dfList); i++ {
 		mainDataframe.Append(dfList[i])
+	}
+	err = mainDataframe.PadColumns()
+	if err != nil {
+		return nil,err
 	}
 	return mainDataframe, nil
 }
