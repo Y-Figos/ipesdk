@@ -53,9 +53,13 @@ func columnUnique(L *lua.LState) int {
 
 	data := column.Unique()
 	table := L.NewTable()
+
 	for i, v := range data {
-		L.RawSet(table, lua.LNumber(i+1), utils.ConvertAnytoLuaType(L,v))
+		// normalize index to 1-based for Lua
+		luaVal := utils.ConvertAnytoLuaType(L, v)
+		table.RawSetInt(i+1, luaVal)
 	}
+
 	L.Push(table)
 	return 1
 }
@@ -66,7 +70,7 @@ func columnData(L *lua.LState) int {
 
 	table := L.NewTable()
 	for i, v := range data {
-		L.RawSet(table, lua.LNumber(i+1), utils.ConvertAnytoLuaType(L,v))
+		L.RawSet(table, lua.LNumber(i+1), utils.ConvertAnytoLuaType(L, v))
 	}
 	L.Push(table)
 	return 1
@@ -79,7 +83,7 @@ func columnGet(L *lua.LState) int {
 	index := L.CheckInt(2)
 
 	value := column.GetValue(index)
-	L.Push(utils.ConvertAnytoLuaType(L,value))
+	L.Push(utils.ConvertAnytoLuaType(L, value))
 	return 1
 }
 
@@ -97,6 +101,7 @@ func RegisterDataFrameType(L *lua.LState) {
 	L.SetField(mt, "__index", L.NewFunction(dataframeIndex))
 	L.SetField(mt, "__newindex", L.NewFunction(dataframeNewIndex))
 }
+
 // Dataframe Type function Lua Mappers
 func dataframeShape(L *lua.LState) int {
 	df := checkUserDataAs[*df.Dataframe](L, 1)
@@ -130,7 +135,7 @@ func dataframeIndex(L *lua.LState) int {
 		return 1
 	case "append":
 		L.Push(L.NewFunction(dataframeAppend))
-			return 1
+		return 1
 	}
 
 	// Then, check if key is a column name
@@ -186,7 +191,7 @@ func dataframeNewColumn(L *lua.LState) int {
 	colName := L.CheckString(2)
 	col := checkUserDataAs[df.ColumnInterface](L, 3)
 	log.Println(col.DataSlice()...)
-	mydf.NewColumn(colName,col)
+	mydf.NewColumn(colName, col)
 	return 0
 }
 func dataframeAppend(L *lua.LState) int {
