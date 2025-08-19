@@ -502,3 +502,43 @@ func (df *Dataframe) NewColumn(columnName string, newColumn ColumnInterface) {
 	df.ColumnOrder = append(df.ColumnOrder, columnName)
 	df.Columns[columnName] = newColumn
 }
+
+func (df *Dataframe) PadColumns() error {
+    if len(df.Columns) == 0 {
+        return nil
+    }
+
+    // 1. Find the max row count
+    maxRows := 0
+    for _, col := range df.Columns {
+        if col.Len() > maxRows {
+            maxRows = col.Len()
+        }
+    }
+
+    // 2. Pad each column to match maxRows
+    for name, col := range df.Columns {
+        currentLen := col.Len()
+        for i := currentLen; i < maxRows; i++ {
+            // Use type-specific zero values instead of nil
+            var padValue any
+            switch col.Type().Kind() {
+            case reflect.Int:
+                padValue = 0
+            case reflect.Float64:
+                padValue = 0.0
+            case reflect.Bool:
+                padValue = false
+            case reflect.String:
+                padValue = ""
+            default:
+                padValue = nil
+            }
+            if err := col.AppendValue(padValue); err != nil {
+                return fmt.Errorf("failed to pad column %s: %v", name, err)
+            }
+        }
+    }
+
+    return nil
+}

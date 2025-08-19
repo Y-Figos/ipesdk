@@ -10,14 +10,14 @@ import (
 )
 
 type XLSXReader struct {
-	Data      *df.Dataframe
-	FilePath  string
-	SheetName string
-	file      *excelize.File
-	HeaderRow int
-	StartColumn	int
-	rows      [][]string
-	BaseInput *BaseInput
+	Data        *df.Dataframe
+	FilePath    string
+	SheetName   string
+	file        *excelize.File
+	HeaderRow   int
+	StartColumn int
+	rows        [][]string
+	BaseInput   *BaseInput
 }
 
 func (x *XLSXReader) GetData() (*df.Dataframe, error) {
@@ -41,7 +41,9 @@ func (x *XLSXReader) GetData() (*df.Dataframe, error) {
 		ColumnOrder: headers,
 		Columns:     make(map[string]df.ColumnInterface),
 	}
+
 	samplesize := 10
+
 	if samplesize > len(x.rows) {
 		samplesize = len(x.rows)
 	}
@@ -54,7 +56,7 @@ func (x *XLSXReader) GetData() (*df.Dataframe, error) {
 	x.BaseInput.SetupSchemaFromSample(headers, sampleData, &newDf)
 
 	x.BaseInput.WriteRows(headers, x.rows[x.HeaderRow:], &newDf)
-	log.Print(newDf)
+
 	return &newDf, nil
 }
 
@@ -64,12 +66,38 @@ func (x *XLSXReader) Open() error {
 		return err
 	}
 	x.file = f
-	rows, err := x.file.GetRows(x.SheetName)
+
+	sheetMap := f.GetSheetMap()
+
+	// --- fallback logic ---
+	if x.SheetName == "" || !sheetExists(f, x.SheetName) {
+		if len(sheetMap) == 0 {
+			return fmt.Errorf("file has no sheets")
+		}
+
+		if len(sheetMap) == 1 {
+			// only one sheet in the file, use it regardless of active sheet
+			for _, s := range sheetMap {
+				x.SheetName = s
+			}
+		} else {
+			// multiple sheets: fallback to active sheet
+			activeIdx := f.GetActiveSheetIndex()
+			activeSheet, ok := sheetMap[activeIdx]
+			if !ok {
+				return fmt.Errorf("active sheet index %d not found in sheet map", activeIdx)
+			}
+			x.SheetName = activeSheet
+		}
+	}
+	// --- end fallback ---
+
+	rows, err := f.GetRows(x.SheetName)
 	if err != nil {
 		return err
 	}
-	if len(rows) <= 0 {
-		return fmt.Errorf("file has no data")
+	if len(rows) == 0 {
+		return fmt.Errorf("sheet %q has no data", x.SheetName)
 	}
 
 	// Determine max columns after trimming start column
@@ -91,7 +119,7 @@ func (x *XLSXReader) Open() error {
 	// Pad rows with fewer columns with empty strings
 	for i, r := range trimmed {
 		if len(r) < maxCols {
-			pad := make([]string, maxCols - len(r))
+			pad := make([]string, maxCols-len(r))
 			trimmed[i] = append(r, pad...)
 		}
 	}
@@ -99,6 +127,7 @@ func (x *XLSXReader) Open() error {
 	x.rows = trimmed
 	return nil
 }
+
 func (x *XLSXReader) GetHeaders() ([]string, error) {
 	if len(x.rows) > 0 {
 		return x.rows[x.HeaderRow-1], nil
@@ -118,4 +147,13 @@ func (x *XLSXReader) Close() error {
 		return err
 	}
 	return nil
+}
+
+func sheetExists(f *excelize.File, name string) bool {
+	for _, s := range f.GetSheetMap() {
+		if s == name {
+			return true
+		}
+	}
+	return false
 }
