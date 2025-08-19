@@ -245,8 +245,11 @@ func (df Dataframe) String() string {
 		return "Empty DataFrame"
 	}
 
-	maxDisplayWidth := 15
+	maxDisplayWidth := 10
 	maxDisplayRows := 10
+	maxDisplayColumns := 4
+
+	// 1️⃣ Calcula largura de cada coluna (até maxDisplayWidth)
 	colWidths := make(map[string]int, len(df.ColumnOrder))
 	for _, colName := range df.ColumnOrder {
 		maxLen := len(colName)
@@ -262,19 +265,39 @@ func (df Dataframe) String() string {
 		colWidths[colName] = maxLen
 	}
 
-	// 2️⃣ Build header
+	// 2️⃣ Decide quais colunas mostrar
+	displayCols := []string{}
+	if len(df.ColumnOrder) <= maxDisplayColumns {
+		displayCols = df.ColumnOrder
+	} else {
+		head := maxDisplayColumns / 2
+		tail := maxDisplayColumns - head
+		displayCols = append(displayCols, df.ColumnOrder[:head]...)
+		displayCols = append(displayCols, "...") // marcador de colunas omitidas
+		displayCols = append(displayCols, df.ColumnOrder[len(df.ColumnOrder)-tail:]...)
+	}
+
+	// 3️⃣ Prepara builder e escreve cabeçalho
 	var out strings.Builder
 	out.WriteString("\n")
-	out.WriteString("\t")
-	for _, colName := range df.ColumnOrder {
+
+	// largura do índice de linha
+	rowCount := df.RowCount()
+	rowIdxWidth := len(fmt.Sprint(rowCount))
+
+	out.WriteString(fmt.Sprintf("%*s  ", rowIdxWidth, "")) // espaço pro índice
+	for _, colName := range displayCols {
+		if colName == "..." {
+			out.WriteString("...  ")
+			continue
+		}
 		width := colWidths[colName]
 		out.WriteString(fmt.Sprintf("%-*s", width, truncate(colName, width)))
 		out.WriteString("  ")
 	}
 	out.WriteString("\n")
 
-	// 3️⃣ Decide which rows to show
-	rowCount := df.RowCount()
+	// 4️⃣ Decide quais linhas mostrar
 	rowsToShow := []int{}
 	if rowCount <= maxDisplayRows {
 		for i := 0; i < rowCount; i++ {
@@ -286,21 +309,36 @@ func (df Dataframe) String() string {
 		for i := 0; i < head; i++ {
 			rowsToShow = append(rowsToShow, i)
 		}
-		rowsToShow = append(rowsToShow, -1) // marker for ellipsis
+		rowsToShow = append(rowsToShow, -1) // marcador de linhas omitidas
 		for i := rowCount - tail; i < rowCount; i++ {
 			rowsToShow = append(rowsToShow, i)
 		}
 	}
 
+	// 5️⃣ Escreve as linhas
 	for _, rowIdx := range rowsToShow {
 		if rowIdx == -1 {
-			out.WriteString("...\n")
+			out.WriteString(fmt.Sprintf("%*s  ...\n", rowIdxWidth, ""))
 			continue
 		}
-		out.WriteString(fmt.Sprintf("%d\t", rowIdx))
-		for _, colName := range df.ColumnOrder {
+
+		out.WriteString(fmt.Sprintf("%*d  ", rowIdxWidth, rowIdx))
+		for _, colName := range displayCols {
+			if colName == "..." {
+				out.WriteString("...  ")
+				continue
+			}
+
 			width := colWidths[colName]
-			val := fmt.Sprint(df.Columns[colName].GetValue(rowIdx))
+			col := df.Columns[colName]
+
+			var val string
+			if rowIdx < col.Len() {
+				val = fmt.Sprint(col.GetValue(rowIdx))
+			} else {
+				val = "" // preenche vazio se coluna for menor
+			}
+
 			out.WriteString(fmt.Sprintf("%-*s", width, truncate(val, width)))
 			out.WriteString("  ")
 		}
@@ -312,7 +350,7 @@ func (df Dataframe) String() string {
 
 func truncate(s string, max int) string {
 	if len(s) > max {
-		if max <= 3 {
+		if max <= 4 {
 			return s[:max]
 		}
 		return s[:max-3] + "..."
@@ -335,11 +373,15 @@ func (df *Dataframe) RowCount() int {
 	if len(df.Columns) == 0 {
 		return 0
 	}
-	// All columns same length - pick first
-	for _, col := range df.Columns {
-		return col.Len()
+	
+	var maxiRowColumn int = 0;
+	for _, col := range df.Columns {		
+		x := col.Len()
+		if (x >maxiRowColumn){
+			maxiRowColumn=x
+		}
 	}
-	return 0
+	return maxiRowColumn;
 }
 
 func (df *Dataframe) Row(i int) map[string]any {
