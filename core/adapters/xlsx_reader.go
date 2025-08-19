@@ -25,6 +25,7 @@ func (x *XLSXReader) GetData() (*df.Dataframe, error) {
 	if err != nil {
 		return nil, err
 	}
+	log.Println("entered GetData")
 	defer x.Close()
 
 	if x.BaseInput == nil {
@@ -36,16 +37,17 @@ func (x *XLSXReader) GetData() (*df.Dataframe, error) {
 		log.Println(err)
 		return nil, err
 	}
-
 	newDf := df.Dataframe{
 		ColumnOrder: headers,
 		Columns:     make(map[string]df.ColumnInterface),
 	}
-	samplesize := 1
+
+	samplesize := 10
+
 	if samplesize > len(x.rows) {
 		samplesize = len(x.rows)
 	}
-
+	
 	sampleData, err := x.ReadSample(samplesize)
 	if err != nil {
 		return nil, err
@@ -54,6 +56,7 @@ func (x *XLSXReader) GetData() (*df.Dataframe, error) {
 	x.BaseInput.SetupSchemaFromSample(headers, sampleData, &newDf)
 
 	x.BaseInput.WriteRows(headers, x.rows[x.HeaderRow:], &newDf)
+
 	return &newDf, nil
 }
 
