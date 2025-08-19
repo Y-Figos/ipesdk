@@ -42,7 +42,7 @@ type NodeModule struct {
 func (nm *NodeModule) readBatchFiles(reader adapters.InputAdapterFactory) (*df.Dataframe, error) {
 	batchFileReader := adapters.BatchFileReader{
 		ReaderFactory: reader,
-		DirPath: nm.InArgs["filepath"].(string),
+		DirPath:       nm.InArgs["filepath"].(string),
 	}
 	newDf, err := batchFileReader.MergeFiles(nm.InArgs)
 	if err != nil {
@@ -60,7 +60,7 @@ func (nm *NodeModule) getInputFromAdapter() (*df.Dataframe, error) {
 		return nil, fmt.Errorf("adapter %v of %v do not exist", nm.Adapter, nm.ModuleName)
 	}
 
-	if nm.InArgs["batch_read"].(bool){
+	if nm.InArgs["batch_read"].(bool) {
 		dataframe, err := nm.readBatchFiles(factory)
 		if err != nil {
 			return nil, err
@@ -202,6 +202,7 @@ func (nm *NodeModule) Export() error {
 	if err != nil {
 		return fmt.Errorf("failed to create output adapter: %w", err)
 	}
+	
 	if outadapter == nil {
 		return errors.New("output adapter is nil")
 	}

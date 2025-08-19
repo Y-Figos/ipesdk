@@ -249,7 +249,6 @@ func (df Dataframe) String() string {
 	maxDisplayRows := 10
 	maxDisplayColumns := 4
 
-	// 1️⃣ Calcula largura de cada coluna (até maxDisplayWidth)
 	colWidths := make(map[string]int, len(df.ColumnOrder))
 	for _, colName := range df.ColumnOrder {
 		maxLen := len(colName)
