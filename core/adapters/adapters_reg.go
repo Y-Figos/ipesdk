@@ -11,8 +11,9 @@ import (
 type InputAdapterFactory func(args map[string]any) (ports.InputInterface, error)
 
 var InputAdapterRegistry = map[string]InputAdapterFactory{
-	"csv":   CSVReaderFactory,
-	"excel": ExcelReaderFactory,
+	"csv":        CSVReaderFactory,
+	"excel":      ExcelReaderFactory,
+	"tim_reader": TimLogReader,
 	//
 }
 
@@ -23,7 +24,7 @@ var OutAdapterRegistry = map[string]OutputAdapterFactory{
 	"excel": ExcelAdapterFactory,
 }
 
-//Refactor this later to comply with new factory signature, csv output temporary dropped
+// Refactor this later to comply with new factory signature, csv output temporary dropped
 func CSVWriterFactory(args map[string]any, payload *df.Dataframe) (ports.OutputInterface, error) {
 	return &CSVWriter{
 		Data:     payload,
@@ -72,10 +73,10 @@ func ExcelReaderFactory(args map[string]any) (ports.InputInterface, error) {
 		sheetName = ""
 	}
 	return &XLSXReader{
-		SheetName: sheetName,
-		HeaderRow: int(headerRow),
-		FilePath:  filePath,
-		BaseInput: &BaseInput{},
+		SheetName:   sheetName,
+		HeaderRow:   int(headerRow),
+		FilePath:    filePath,
+		BaseInput:   &BaseInput{},
 		StartColumn: ColumnDefault,
 	}, nil
 }
@@ -88,7 +89,7 @@ func ExcelAdapterFactory(args map[string]any, payload map[string]*df.Dataframe) 
 	HeaderDefault := 1
 	headerRow, ok := args["header_row"].(float64)
 	if !ok {
-		return nil, fmt.Errorf("'headerRow' is required and must be a int: %v", reflect.TypeOf(args["header_row"]))
+		headerRow = 1
 	}
 	if headerRow != 0 {
 		HeaderDefault = int(headerRow)
@@ -108,11 +109,11 @@ func ExcelAdapterFactory(args map[string]any, payload map[string]*df.Dataframe) 
 		saveMode = ""
 	}
 	var sheetOrderString []string
-	if saveMode == ""{
+	if saveMode == "" {
 		saveMode = "multi_sheet"
 		sheetOrder, ok := args["sheet_order"].([]interface{})
 		if !ok || sheetOrder == nil {
-			return nil, fmt.Errorf("'sheet_order' is required and must be a string array: %v",reflect.TypeOf(args["sheet_order"]))
+			sheetOrder = nil
 		}
 		var err error
 		sheetOrderString, err = InterfaceSliceToStringSlice(sheetOrder)
@@ -121,16 +122,16 @@ func ExcelAdapterFactory(args map[string]any, payload map[string]*df.Dataframe) 
 		}
 	}
 	return &XLSXWriter{
-		Data: payload,
-		FilePath: filePath,
+		Data:        payload,
+		FilePath:    filePath,
 		SheetsOrder: sheetOrderString,
-		HeaderRow: HeaderDefault,
+		HeaderRow:   HeaderDefault,
 		StartColumn: ColumnDefault,
-		SaveMode:saveMode,
+		SaveMode:    saveMode,
 	}, nil
 }
 
-//Helper Function to convert interface slices to strings
+// Helper Function to convert interface slices to strings
 func InterfaceSliceToStringSlice(raw []interface{}) ([]string, error) {
 	strs := make([]string, len(raw))
 	for i, v := range raw {
@@ -141,4 +142,20 @@ func InterfaceSliceToStringSlice(raw []interface{}) ([]string, error) {
 		strs[i] = s
 	}
 	return strs, nil
+}
+
+func TimLogReader(args map[string]any) (ports.InputInterface, error) {
+	filePath, ok := args["filepath"].(string)
+	if !ok || filePath == "" {
+		return nil, fmt.Errorf("'filepath' is required and must be a string")
+	}
+	header_pattern, ok := args["header_pattern"].(string)
+	if !ok || filePath == "" {
+		return nil, fmt.Errorf("'filepath' is required and must be a string")
+	}
+
+	return &LogReaderTim{
+		Filepath:       filePath,
+		HeadersPattern: header_pattern,
+	}, nil
 }

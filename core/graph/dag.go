@@ -8,11 +8,11 @@ import (
 
 	fh "github.com/Y-Figos/ipesdk/core/file_handler"
 )
+
 type RuntimeContext struct {
 	Global map[string]any
 }
 type DAG struct {
-	
 	Nodes  map[string]*NodeModule
 	Edges  map[string][]string
 	Sorted [][]*NodeModule
@@ -23,22 +23,22 @@ func BuildGraph(manifest *fh.Manifest) *DAG {
 		Edges: make(map[string][]string)}
 	root := filepath.Dir(manifest.ManifestPath)
 	ctx := &RuntimeContext{
-	Global: make(map[string]any),
+		Global: make(map[string]any),
 	}
 	for _, node := range manifest.NodeList {
 		var output string
-		if node.OutputArgs != nil{
+		if node.OutputArgs != nil {
 			output = node.OutputArgs["export_as"].(string)
 		}
 		newModule := &NodeModule{
 			ModuleName: node.Id,
 			Adapter:    node.Adapter,
 			InArgs:     node.InputArgs,
-			OutArgs:     node.OutputArgs,
+			OutArgs:    node.OutputArgs,
 			ScriptPath: filepath.Join(root, "modules", node.Id, "script.lua"),
 			DataOutput: output,
 			ExportFlag: node.ExportFlag,
-			Context: ctx,
+			Context:    ctx,
 		}
 		dag.Nodes[node.Id] = newModule
 	}
@@ -179,7 +179,7 @@ func (dag *DAG) RunModule(selectedNode *NodeModule) error {
 
 	if err := dag.validate(); err != nil {
 		return fmt.Errorf("DAG not valid, cycle detected: %v", err)
-		
+
 	}
 	shouldStop := false
 	for _, layer := range dag.Sorted {
@@ -203,7 +203,7 @@ func (dag *DAG) RunModule(selectedNode *NodeModule) error {
 		close(statusChan)
 		for status := range statusChan {
 			if status == StatusFailed {
-				
+
 				return fmt.Errorf("stopping DAG execution due to module failure")
 			}
 		}
