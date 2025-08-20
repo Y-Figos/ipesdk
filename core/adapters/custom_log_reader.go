@@ -101,6 +101,9 @@ func (lr *LogReaderTim) ReadSample(n int) ([][]string, error) {
 	return nil, nil
 }
 func (lr *LogReaderTim) GetHeaders() ([]string, error) {
+	if len(lr.tableSlice) == 0 {
+		return nil, fmt.Errorf("error at file %v, no header found", lr.Filepath)
+	}
 	return lr.tableSlice[0], nil
 }
 func (lr *LogReaderTim) Close() error {
