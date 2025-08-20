@@ -12,6 +12,7 @@ import (
 type BatchFileReader struct {
 	ReaderFactory InputAdapterFactory
 	DirPath       string
+	FailedFiles   []string
 }
 
 func (bf *BatchFileReader) getFileList() ([]string, error) {
@@ -39,13 +40,18 @@ func (bf *BatchFileReader) readBatchFiles(filesList []string, in_args map[string
 		in_args["filepath"] = file
 		reader, err := bf.ReaderFactory(in_args)
 		if err != nil {
-			return nil, fmt.Errorf("error on file: %s: %v", file, err)
+			bf.FailedFiles = append(bf.FailedFiles, fmt.Sprintf("%s (init error: %v)", file, err))
+			continue
 		}
 		dataframe, err := reader.GetData()
 		if err != nil {
-			return nil, fmt.Errorf("error on file: %s: %v", file, err)
+			bf.FailedFiles = append(bf.FailedFiles, fmt.Sprintf("%s (read error: %v)", file, err))
+			continue
 		}
 		dfList[index] = dataframe
+	}
+	if len(dfList) == 0 {
+		return nil, fmt.Errorf("no valid files read, failed: %v", bf.FailedFiles)
 	}
 	return dfList, nil
 }
@@ -66,7 +72,7 @@ func (bf *BatchFileReader) MergeFiles(out_args map[string]any) (*df.Dataframe, e
 	}
 	err = mainDataframe.PadColumns()
 	if err != nil {
-		return nil,err
+		return nil, err
 	}
 	return mainDataframe, nil
 }
