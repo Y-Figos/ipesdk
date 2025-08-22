@@ -35,24 +35,30 @@ func (bf *BatchFileReader) getFileList() ([]string, error) {
 }
 
 func (bf *BatchFileReader) readBatchFiles(filesList []string, in_args map[string]any) ([]*df.Dataframe, error) {
-	dfList := make([]*df.Dataframe, len(filesList))
-	for index, file := range filesList {
+	bf.FailedFiles = []string{}
+	var dfList []*df.Dataframe // lista apenas com arquivos válidos
+
+	for _, file := range filesList {
 		in_args["filepath"] = file
 		reader, err := bf.ReaderFactory(in_args)
 		if err != nil {
-			bf.FailedFiles = append(bf.FailedFiles, fmt.Sprintf("%s (init error: %v)", file, err))
+			bf.FailedFiles = append(bf.FailedFiles, file) // só a path
 			continue
 		}
+
 		dataframe, err := reader.GetData()
 		if err != nil {
-			bf.FailedFiles = append(bf.FailedFiles, fmt.Sprintf("%s (read error: %v)", file, err))
+			bf.FailedFiles = append(bf.FailedFiles, file) // só a path
 			continue
 		}
-		dfList[index] = dataframe
+
+		dfList = append(dfList, dataframe) // adiciona apenas os válidos
 	}
+
 	if len(dfList) == 0 {
 		return nil, fmt.Errorf("no valid files read, failed: %v", bf.FailedFiles)
 	}
+
 	return dfList, nil
 }
 

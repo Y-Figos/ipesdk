@@ -1,0 +1,1 @@
+{"id":"Module_1","adapter":"tim_reader","depends":[],"export_as":"", "input_args":{"filepath":"C:\\Users\\a50046397\\Desktop\\TIMLOG\\3G_erros","batch_reader":true,"header_pattern":"FRU;LNH;BOARD;RF;BP ;TX (W/dBm) ;VSWR (RL);RX (dBm) ;RLs;Sector/AntennaGroup/Cells (State:CellIds:PCIs)"}, "output_args":{"export_as":"excel","filepath":"C:\\TIM Files"},"export":true}

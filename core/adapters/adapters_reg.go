@@ -10,6 +10,7 @@ import (
 
 type InputAdapterFactory func(args map[string]any) (ports.InputInterface, error)
 
+
 var InputAdapterRegistry = map[string]InputAdapterFactory{
 	"csv":        CSVReaderFactory,
 	"excel":      ExcelReaderFactory,
@@ -143,7 +144,7 @@ func InterfaceSliceToStringSlice(raw []interface{}) ([]string, error) {
 	}
 	return strs, nil
 }
-
+//TimLogReader é a função factory que cria a instância de LogReaderTim.
 func TimLogReader(args map[string]any) (ports.InputInterface, error) {
 	filePath, ok := args["filepath"].(string)
 	if !ok || filePath == "" {
