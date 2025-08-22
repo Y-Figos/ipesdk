@@ -153,3 +153,5 @@ func (lr *LogReaderTim) getTable(lines []string) [][]string {
 	}
 	return table
 }
+
+

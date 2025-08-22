@@ -48,6 +48,23 @@ func (nm *NodeModule) readBatchFiles(reader adapters.InputAdapterFactory) (*df.D
 	if err != nil {
 		return nil, err
 	}
+
+	if len(batchFileReader.FailedFiles) != 0 {
+		fmt.Println(batchFileReader.FailedFiles)
+		columnlog := df.NewColumn("Fails", batchFileReader.FailedFiles)
+
+		dflog := df.Dataframe{
+			Columns: make(map[string]df.ColumnInterface), // inicializa o mapa
+		}
+		dflog.NewColumn("Fails", columnlog)
+
+		// inicializa Payloads se estiver nil
+		if nm.Payloads == nil {
+			nm.Payloads = make(map[string]*df.Dataframe)
+		}
+		nm.Payloads["Faillog_"+nm.ModuleName] = &dflog
+	}
+
 	return newDf, nil
 }
 
