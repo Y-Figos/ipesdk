@@ -6,7 +6,6 @@ import (
 	"os"
 	"regexp"
 	"strings"
-
 	"github.com/Y-Figos/ipesdk/core/df"
 )
 

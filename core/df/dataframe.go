@@ -26,10 +26,10 @@ type ColumnInterface interface {
 	LuaApply(*lua.LState, *lua.LFunction, ...string) (ColumnInterface, error)
 }
 
-type Column[T comparable] struct{
-	Header 		string
-	Data		[]T
-	GoType 		reflect.Type
+type Column[T comparable] struct {
+	Header string
+	Data   []T
+	GoType reflect.Type
 }
 
 func (c *Column[T]) EmptyClone() ColumnInterface {
@@ -192,8 +192,8 @@ func (c *Column[T]) LuaApply(L *lua.LState, predicate *lua.LFunction, optional_h
 	if len(optional_header) > 0 {
 		header = optional_header[0]
 	}
-	for i, value := range c.Data{
-		luaArg := utils.ConvertAnytoLuaType(L,value)
+	for i, value := range c.Data {
+		luaArg := utils.ConvertAnytoLuaType(L, value)
 		err := L.CallByParam(lua.P{
 			Fn:      predicate,
 			NRet:    1,
@@ -372,15 +372,15 @@ func (df *Dataframe) RowCount() int {
 	if len(df.Columns) == 0 {
 		return 0
 	}
-	
-	var maxiRowColumn int = 0;
-	for _, col := range df.Columns {		
+
+	var maxiRowColumn int = 0
+	for _, col := range df.Columns {
 		x := col.Len()
-		if (x >maxiRowColumn){
-			maxiRowColumn=x
+		if x > maxiRowColumn {
+			maxiRowColumn = x
 		}
 	}
-	return maxiRowColumn;
+	return maxiRowColumn
 }
 
 func (df *Dataframe) Row(i int) map[string]any {
@@ -454,7 +454,7 @@ func (df *Dataframe) FilterLua(L *lua.LState, fn *lua.LFunction) (*Dataframe, er
 		// Construct row table for Lua
 		for name, col := range df.Columns {
 			goVal := col.GetValue(i)
-			luaVal := utils.ConvertAnytoLuaType(L,goVal)
+			luaVal := utils.ConvertAnytoLuaType(L, goVal)
 			L.SetField(luaRow, name, luaVal)
 		}
 
@@ -494,6 +494,10 @@ func (df *Dataframe) Append(otherDf *Dataframe) error {
 			column.AppendValue(value)
 		}
 	}
+	err := df.PadColumns()
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -503,41 +507,41 @@ func (df *Dataframe) NewColumn(columnName string, newColumn ColumnInterface) {
 }
 
 func (df *Dataframe) PadColumns() error {
-    if len(df.Columns) == 0 {
-        return nil
-    }
+	if len(df.Columns) == 0 {
+		return nil
+	}
 
-    // 1. Find the max row count
-    maxRows := 0
-    for _, col := range df.Columns {
-        if col.Len() > maxRows {
-            maxRows = col.Len()
-        }
-    }
+	// 1. Find the max row count
+	maxRows := 0
+	for _, col := range df.Columns {
+		if col.Len() > maxRows {
+			maxRows = col.Len()
+		}
+	}
 
-    // 2. Pad each column to match maxRows
-    for name, col := range df.Columns {
-        currentLen := col.Len()
-        for i := currentLen; i < maxRows; i++ {
-            // Use type-specific zero values instead of nil
-            var padValue any
-            switch col.Type().Kind() {
-            case reflect.Int:
-                padValue = 0
-            case reflect.Float64:
-                padValue = 0.0
-            case reflect.Bool:
-                padValue = false
-            case reflect.String:
-                padValue = ""
-            default:
-                padValue = nil
-            }
-            if err := col.AppendValue(padValue); err != nil {
-                return fmt.Errorf("failed to pad column %s: %v", name, err)
-            }
-        }
-    }
+	// 2. Pad each column to match maxRows
+	for name, col := range df.Columns {
+		currentLen := col.Len()
+		for i := currentLen; i < maxRows; i++ {
+			// Use type-specific zero values instead of nil
+			var padValue any
+			switch col.Type().Kind() {
+			case reflect.Int:
+				padValue = 0
+			case reflect.Float64:
+				padValue = 0.0
+			case reflect.Bool:
+				padValue = false
+			case reflect.String:
+				padValue = ""
+			default:
+				padValue = nil
+			}
+			if err := col.AppendValue(padValue); err != nil {
+				return fmt.Errorf("failed to pad column %s: %v", name, err)
+			}
+		}
+	}
 
-    return nil
+	return nil
 }
