@@ -25,7 +25,6 @@ func (x *XLSXReader) GetData() (*df.Dataframe, error) {
 	if err != nil {
 		return nil, err
 	}
-	log.Println("entered GetData")
 	defer x.Close()
 
 	if x.BaseInput == nil {
@@ -47,7 +46,7 @@ func (x *XLSXReader) GetData() (*df.Dataframe, error) {
 	if samplesize > len(x.rows) {
 		samplesize = len(x.rows)
 	}
-	
+
 	sampleData, err := x.ReadSample(samplesize)
 	if err != nil {
 		return nil, err
@@ -57,6 +56,7 @@ func (x *XLSXReader) GetData() (*df.Dataframe, error) {
 
 	x.BaseInput.WriteRows(headers, x.rows[x.HeaderRow:], &newDf)
 
+	newDf.PadColumns()
 	return &newDf, nil
 }
 
@@ -122,8 +122,10 @@ func (x *XLSXReader) Open() error {
 			pad := make([]string, maxCols-len(r))
 			trimmed[i] = append(r, pad...)
 		}
+		if len(trimmed[i]) != maxCols {
+			return fmt.Errorf("row %d has len=%d, expected %d", i, len(trimmed[i]), maxCols)
+		}
 	}
-
 	x.rows = trimmed
 	return nil
 }
