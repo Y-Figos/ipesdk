@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-
+	"maps"
 	"github.com/Y-Figos/ipesdk/core/df"
 	_ "github.com/Y-Figos/ipesdk/core/ports"
 )
@@ -43,7 +43,10 @@ func (bf *BatchFileReader) readBatchFiles(filesList []string, in_args map[string
 
 	for _, file := range filesList {
 		in_args["filepath"] = file
-		reader, err := bf.ReaderFactory(in_args)
+		localArgs := maps.Clone(in_args)
+    	localArgs["filepath"] = file 
+
+		reader, err := bf.ReaderFactory(localArgs)
 		if err != nil {
 			bf.FailedFiles = append(bf.FailedFiles, file) // só a path
 			continue
