@@ -545,3 +545,35 @@ func (df *Dataframe) PadColumns() error {
 
 	return nil
 }
+func (df *Dataframe) EmptyClone() *Dataframe {
+    newColumns := make(map[string]ColumnInterface, len(df.Columns))
+    
+    // Clone each column structure without data
+    for name, col := range df.Columns {
+        newColumns[name] = col.EmptyClone()
+    }
+    
+    // Create new dataframe with same structure
+    return &Dataframe{
+        ColumnOrder: append([]string{}, df.ColumnOrder...), // Create new slice with same values
+        Columns:     newColumns,
+    }
+}
+
+func (df *Dataframe) Clone() *Dataframe {
+    newColumns := make(map[string]ColumnInterface, len(df.Columns))
+    
+    // Clone each column with data
+    for name, col := range df.Columns {
+        newCol := col.EmptyClone()
+        for _, val := range col.DataSlice() {
+            newCol.AppendValue(val)
+        }
+        newColumns[name] = newCol
+    }
+    
+    return &Dataframe{
+        ColumnOrder: append([]string{}, df.ColumnOrder...),
+        Columns:     newColumns,
+    }
+}

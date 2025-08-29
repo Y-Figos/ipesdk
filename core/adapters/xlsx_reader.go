@@ -54,9 +54,10 @@ func (x *XLSXReader) GetData() (*df.Dataframe, error) {
 
 	x.BaseInput.SetupSchemaFromSample(headers, sampleData, &newDf)
 
-	x.BaseInput.WriteRows(headers, x.rows[x.HeaderRow:], &newDf)
-
+	x.BaseInput.WriteRows(headers, x.rows[x.HeaderRow+samplesize:], &newDf)
+	log.Println(newDf.RowCount())
 	newDf.PadColumns()
+	log.Println(newDf.RowCount())
 	return &newDf, nil
 }
 
