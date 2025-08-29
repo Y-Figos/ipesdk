@@ -30,21 +30,25 @@ func (x *XLSXReader) GetData() (*df.Dataframe, error) {
 	if x.BaseInput == nil {
 		return nil, errors.New("BaseInput is not initialized")
 	}
+
 	headers, err := x.GetHeaders()
 	if err != nil {
-		x.Close()
 		log.Println(err)
 		return nil, err
 	}
+
 	newDf := df.Dataframe{
 		ColumnOrder: headers,
 		Columns:     make(map[string]df.ColumnInterface),
 	}
 
 	samplesize := 10
-
-	if samplesize > len(x.rows) {
-		samplesize = len(x.rows)
+	dataRows := len(x.rows) - x.HeaderRow // number of rows after header
+	if dataRows < 1 {
+		return nil, fmt.Errorf("no data rows found after header")
+	}
+	if samplesize > dataRows {
+		samplesize = dataRows
 	}
 
 	sampleData, err := x.ReadSample(samplesize)
@@ -54,10 +58,13 @@ func (x *XLSXReader) GetData() (*df.Dataframe, error) {
 
 	x.BaseInput.SetupSchemaFromSample(headers, sampleData, &newDf)
 
+	// Write the rest of the rows after the header + sample
 	x.BaseInput.WriteRows(headers, x.rows[x.HeaderRow+samplesize:], &newDf)
-	log.Println(newDf.RowCount())
+
+	log.Println("RowCount before padding:", newDf.RowCount())
 	newDf.PadColumns()
-	log.Println(newDf.RowCount())
+	log.Println("RowCount after padding:", newDf.RowCount())
+
 	return &newDf, nil
 }
 
@@ -132,17 +139,25 @@ func (x *XLSXReader) Open() error {
 }
 
 func (x *XLSXReader) GetHeaders() ([]string, error) {
-	if len(x.rows) > 0 {
+	if len(x.rows) >= x.HeaderRow {
 		return x.rows[x.HeaderRow-1], nil
 	}
-	return nil, fmt.Errorf("file has no data")
+	return nil, fmt.Errorf("getheaders,file has no data")
 }
 
 func (x *XLSXReader) ReadSample(n int) ([][]string, error) {
-	if len(x.rows) > 0 && n < len(x.rows) {
-		return x.rows[1 : n+1], nil
+	if len(x.rows) <= x.HeaderRow {
+		return nil, fmt.Errorf("readsample,file has no data")
 	}
-	return nil, fmt.Errorf("file has no data")
+
+	// data rows start at index = HeaderRow
+	start := x.HeaderRow
+	end := start + n
+	if end > len(x.rows) {
+		end = len(x.rows)
+	}
+
+	return x.rows[start:end], nil
 }
 
 func (x *XLSXReader) Close() error {
