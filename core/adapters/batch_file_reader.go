@@ -42,7 +42,6 @@ func (bf *BatchFileReader) readBatchFiles(filesList []string, in_args map[string
 	var dfList []*df.Dataframe // lista apenas com arquivos válidos
 
 	for _, file := range filesList {
-		in_args["filepath"] = file
 		localArgs := maps.Clone(in_args)
     	localArgs["filepath"] = file 
 
