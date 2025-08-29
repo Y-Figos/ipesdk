@@ -13,7 +13,7 @@ import (
 type BatchFileReader struct {
 	ReaderFactory InputAdapterFactory
 	DirPath       string
-	FailedFiles   []string
+	FailedFiles   map[string]string
 }
 
 func (bf *BatchFileReader) getFileList() ([]string, error) {
@@ -39,7 +39,7 @@ func (bf *BatchFileReader) getFileList() ([]string, error) {
 }
 
 func (bf *BatchFileReader) readBatchFiles(filesList []string, in_args map[string]any) ([]*df.Dataframe, error) {
-	bf.FailedFiles = []string{}
+	bf.FailedFiles = make(map[string]string)
 	var dfList []*df.Dataframe // lista apenas com arquivos válidos
 
 	for _, file := range filesList {
@@ -48,13 +48,13 @@ func (bf *BatchFileReader) readBatchFiles(filesList []string, in_args map[string
 
 		reader, err := bf.ReaderFactory(localArgs)
 		if err != nil {
-			bf.FailedFiles = append(bf.FailedFiles, file) // só a path
+			bf.FailedFiles[file] = fmt.Sprintf("%v",err)
 			continue
 		}
 
 		dataframe, err := reader.GetData()
 		if err != nil {
-			bf.FailedFiles = append(bf.FailedFiles, file) // só a path
+			bf.FailedFiles[file] = fmt.Sprintf("%v",err) // só a path
 			continue
 		}
 

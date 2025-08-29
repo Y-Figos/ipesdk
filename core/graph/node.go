@@ -51,12 +51,19 @@ func (nm *NodeModule) readBatchFiles(reader adapters.InputAdapterFactory) (*df.D
 
 	if len(batchFileReader.FailedFiles) != 0 {
 		fmt.Println(batchFileReader.FailedFiles)
-		columnlog := df.NewColumn("Fails", batchFileReader.FailedFiles)
-
+		failPath := []string{}
+		failReason := []string{}
+		for k, v := range batchFileReader.FailedFiles {
+			failPath = append(failPath, k)
+			failReason = append(failReason, v)
+		}
+		columnlog := df.NewColumn("Files", failPath)
+		columnReason := df.NewColumn("Reason", failReason)
 		dflog := df.Dataframe{
 			Columns: make(map[string]df.ColumnInterface), // inicializa o mapa
 		}
 		dflog.NewColumn("Fails", columnlog)
+		dflog.NewColumn("Reason", columnReason)
 
 		// inicializa Payloads se estiver nil
 		if nm.Payloads == nil {
@@ -219,7 +226,7 @@ func (nm *NodeModule) Export() error {
 	if err != nil {
 		return fmt.Errorf("failed to create output adapter: %w", err)
 	}
-	
+
 	if outadapter == nil {
 		return errors.New("output adapter is nil")
 	}
