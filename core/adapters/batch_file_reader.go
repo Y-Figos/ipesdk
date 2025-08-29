@@ -16,22 +16,25 @@ type BatchFileReader struct {
 }
 
 func (bf *BatchFileReader) getFileList() ([]string, error) {
-	files := []string{}
-	info, err := os.Stat(bf.DirPath)
-	if err != nil {
-		return nil, err // path might not exist
-	}
-	if !info.IsDir() {
-		return nil, fmt.Errorf("path must be a directory")
-	}
-	dirEntry, err := os.ReadDir(bf.DirPath)
-	if err != nil {
-		return nil, err
-	}
-	for _, entry := range dirEntry {
-		files = append(files, filepath.Join(bf.DirPath, entry.Name()))
-	}
-	return files, nil
+    path := filepath.Clean(bf.DirPath) // normalize slashes, remove trailing spaces
+    info, err := os.Stat(path)
+    if err != nil {
+        return nil, fmt.Errorf("stat failed for %q: %w", path, err)
+    }
+    if !info.IsDir() {
+        return nil, fmt.Errorf("path %q must be a directory, got file", path)
+    }
+
+    entries, err := os.ReadDir(path)
+    if err != nil {
+        return nil, fmt.Errorf("readdir failed for %q: %w", path, err)
+    }
+
+    files := make([]string, 0, len(entries))
+    for _, entry := range entries {
+        files = append(files, filepath.Join(path, entry.Name()))
+    }
+    return files, nil
 }
 
 func (bf *BatchFileReader) readBatchFiles(filesList []string, in_args map[string]any) ([]*df.Dataframe, error) {
