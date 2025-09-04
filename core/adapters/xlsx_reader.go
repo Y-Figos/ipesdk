@@ -91,9 +91,9 @@ func (x *XLSXReader) Open() error {
 		} else {
 			// multiple sheets: fallback to active sheet
 			activeIdx := f.GetActiveSheetIndex()
-			activeSheet, ok := sheetMap[activeIdx]
-			if !ok {
-				return fmt.Errorf("active sheet index %d not found in sheet map", activeIdx)
+			activeSheet := f.GetSheetName(activeIdx)
+			if activeSheet == "" {
+				return fmt.Errorf("active sheet index %d not found in workbook", activeIdx)
 			}
 			x.SheetName = activeSheet
 		}
