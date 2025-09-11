@@ -10,11 +10,11 @@ import (
 
 type InputAdapterFactory func(args map[string]any) (ports.InputInterface, error)
 
-
 var InputAdapterRegistry = map[string]InputAdapterFactory{
-	"csv":        CSVReaderFactory,
-	"excel":      ExcelReaderFactory,
-	"tim_reader": TimLogReader,
+	"csv":              CSVReaderFactory,
+	"excel":            ExcelReaderFactory,
+	"tim_reader":       TimLogReader,
+	"tim_reader_alarm": TimLogReaderAlarm,
 	//
 }
 
@@ -144,7 +144,8 @@ func InterfaceSliceToStringSlice(raw []interface{}) ([]string, error) {
 	}
 	return strs, nil
 }
-//TimLogReader é a função factory que cria a instância de LogReaderTim.
+
+// TimLogReader é a função factory que cria a instância de LogReaderTim.
 func TimLogReader(args map[string]any) (ports.InputInterface, error) {
 	filePath, ok := args["filepath"].(string)
 	if !ok || filePath == "" {
@@ -158,5 +159,15 @@ func TimLogReader(args map[string]any) (ports.InputInterface, error) {
 	return &LogReaderTim{
 		Filepath:       filePath,
 		HeadersPattern: header_pattern,
+	}, nil
+}
+
+func TimLogReaderAlarm(args map[string]any) (ports.InputInterface, error) {
+	filePath, ok := args["filepath"].(string)
+	if !ok || filePath == "" {
+		return nil, fmt.Errorf("'filepath' is required and must be a string")
+	}
+	return &LogReader{
+		Filepath: filePath,
 	}, nil
 }
