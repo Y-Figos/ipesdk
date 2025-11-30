@@ -142,8 +142,20 @@ default:
     nm.Status = StatusFailed
     return StatusFailed
 }
-	nm.Status = StatusSuccess
-	return StatusSuccess
+// depois do switch que preenche nm.Payloads
+
+nm.Status = StatusSuccess
+
+if nm.DataOutput != "" {
+    if err := nm.Export(); err != nil {
+        log.Printf("Error exporting module %s: %v", nm.ModuleName, err)
+        nm.Status = StatusFailed
+        return StatusFailed
+    }
+}
+
+return StatusSuccess
+
 }
 
 func (nm *NodeModule) Export() error {

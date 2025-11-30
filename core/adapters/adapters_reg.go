@@ -27,7 +27,7 @@ func CSVWriterFactory(args map[string]any, payload *df.Dataframe) (ports.OutputI
 }
 
 func CSVReaderFactory(args map[string]any) (ports.InputInterface, error) {
-	filePath, ok := args["filepath"].(string)
+	filePath, ok := args["file_path"].(string)
 	if !ok || filePath == ""{
 		return nil, fmt.Errorf("'filepath' is required and must be a string")
 	}
