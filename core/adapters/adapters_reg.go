@@ -13,23 +13,27 @@ var InputAdapterRegistry = map[string]InputAdapterFactory{
 	"csv": CSVReaderFactory,
 	// "excel": ExcelAdapterFactory, etc.
 }
-type OutputAdapterFactory func(args map[string]any,payload *df.Dataframe) (ports.OutputInterface, error)
+
+type OutputAdapterFactory func(args map[string]any, payload *df.Dataframe) (ports.OutputInterface, error)
+
 var OutAdapterRegistry = map[string]OutputAdapterFactory{
-	"csv":CSVWriterFactory ,
+	"csv": CSVWriterFactory,
 	// "excel": ExcelAdapterFactory, etc.
 }
 
-func CSVWriterFactory(args map[string]any, payload *df.Dataframe) (ports.OutputInterface, error){
+func CSVWriterFactory(args map[string]any, payload *df.Dataframe) (ports.OutputInterface, error) {
 	return &CSVWriter{
-		Data: payload,
+		Data:     payload,
 		FilePath: args["file_path"].(string),
 	}, nil
 }
 
 func CSVReaderFactory(args map[string]any) (ports.InputInterface, error) {
+	fmt.Printf("DEBUG CSVReaderFactory args: %#v\n", args)
+
 	filePath, ok := args["file_path"].(string)
-	if !ok || filePath == ""{
-		return nil, fmt.Errorf("'filepath' is required and must be a string")
+	if !ok || filePath == "" {
+		return nil, fmt.Errorf("'file_path' is required and must be a string")
 	}
 
 	batchSize := 100

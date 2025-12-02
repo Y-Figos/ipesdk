@@ -1,0 +1,18 @@
+{
+  "id": "Module_1",
+  "adapter": "csv",
+  "depends": [],
+   "export": true,
+  "export_as": "csv",
+  "input_args": {
+    "batch_read": false,
+    "file_path": "",
+    "header_row": 1,
+    "start_column": 1
+  },
+  "output_args": {
+    "file_path": "",
+    "header_row": 1,
+    "export_as": "csv"
+  }
+}

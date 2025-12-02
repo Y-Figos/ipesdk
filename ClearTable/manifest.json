@@ -1,0 +1,26 @@
+{
+  "tool": {
+    "name": "ClearTable",
+    "version": "1.0.0",
+    "description": ""
+  },
+  "nodes": {
+    "Module_1": {
+      "id": "Module_1",
+      "adapter": "csv",
+      "depends": [],
+      "input_args": {
+        "batch_read": false,
+        "file_path": "",
+        "header_row": 1,
+        "start_column": 1
+      },
+      "output_args": {
+        "export_as": "csv",
+        "file_path": "",
+        "header_row": 1
+      },
+      "export": true
+    }
+  }
+}
