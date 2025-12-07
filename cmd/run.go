@@ -2,7 +2,9 @@ package cmd
 
 import (
 	// "os"
+	"os"
 	"path/filepath"
+
 	"github.com/Y-Figos/ipesdk/core/file_handler"
 	"github.com/Y-Figos/ipesdk/core/graph"
 	"github.com/spf13/cobra"
@@ -36,7 +38,7 @@ var runTool = &cobra.Command{
 		dag := graph.BuildGraph(manifest)
 
 		dag.Run()
-		
+		os.Exit(0)
 		return nil		
 	} ,
 }

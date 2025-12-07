@@ -21,8 +21,25 @@ var InputAdapterRegistry = map[string]InputAdapterFactory{
 type OutputAdapterFactory func(args map[string]any, payload map[string]*df.Dataframe) (ports.OutputInterface, error)
 
 var OutAdapterRegistry = map[string]OutputAdapterFactory{
-	//"csv": CSVWriterFactory,
+	"csv": CSVAdapterFactory,
 	"excel": ExcelAdapterFactory,
+}
+
+func CSVAdapterFactory(args map[string]any, payload map[string]*df.Dataframe) (ports.OutputInterface, error) {
+    dfOut, ok := payload["output"]
+    if !ok || dfOut == nil {
+        return nil, fmt.Errorf("csv adapter: payload 'output' is required")
+    }
+
+    path, ok := args["filepath"].(string)
+    if !ok || path == "" {
+        return nil, fmt.Errorf("csv adapter: 'filepath' is required and must be a string")
+    }
+
+    return &CSVWriter{
+        Data:     dfOut,
+        FilePath: path,
+    }, nil
 }
 
 // Refactor this later to comply with new factory signature, csv output temporary dropped

@@ -175,6 +175,8 @@ func (dag *DAG) Run() error {
 	}
 	return nil
 }
+
+
 func (dag *DAG) RunModule(selectedNode *NodeModule) error {
 
 	if err := dag.validate(); err != nil {
