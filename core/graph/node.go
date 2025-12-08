@@ -230,63 +230,67 @@ func (nm *NodeModule) resolveMainReturn(ret []lua.LValue) error {
 // ============================================================================
 
 func (nm *NodeModule) Run() ModuleStatus {
-	nm.Status = StatusRunning
+    nm.Status = StatusRunning
 
-	// cria VM Lua com contexto global compartilhado
-	nm.LuaManager = engine.NewLuaManager(nm.Context.Global)
-	defer nm.LuaManager.L.Close()
+    // cria VM Lua com contexto global compartilhado
+    nm.LuaManager = engine.NewLuaManager(nm.Context.Global)
+    defer nm.LuaManager.L.Close()
 
-	// 1) Lê adapter de entrada (se tiver) e expõe no Lua
-	if err := nm.registerAdapterInput(); err != nil {
-		log.Printf("error registering payload input %s", err)
-		nm.Status = StatusFailed
-		return nm.Status
-	}
+    // 1) Lê adapter de entrada (se tiver) e expõe no Lua
+    if nm.InArgs != nil {
+        if _, hasPath := nm.InArgs["filepath"]; hasPath {
+            if err := nm.registerAdapterInput(); err != nil {
+                log.Printf("error registering payload input %s", err)
+                nm.Status = StatusFailed
+                return nm.Status
+            }
+        }
+    }
 
-	// 2) Puxa payloads das dependências e registra no Lua
-	if err := nm.resolveDependencies(); err != nil {
-		log.Printf("error resolving dependencies %s", err)
-		nm.Status = StatusFailed
-		return nm.Status
-	}
+    // 2) Puxa payloads das dependências e registra no Lua
+    if err := nm.resolveDependencies(); err != nil {
+        log.Printf("error resolving dependencies %s", err)
+        nm.Status = StatusFailed
+        return nm.Status
+    }
 
-	// 3) Carrega script Lua do módulo
-	if err := nm.LuaManager.LoadScript(nm.ScriptPath); err != nil {
-		log.Printf("error loading lua script for %s: %s", nm.ModuleName, err)
-		nm.Status = StatusFailed
-		return nm.Status
-	}
+    // 3) Carrega script Lua do módulo
+    if err := nm.LuaManager.LoadScript(nm.ScriptPath); err != nil {
+        log.Printf("error loading lua script for %s: %s", nm.ModuleName, err)
+        nm.Status = StatusFailed
+        return nm.Status
+    }
 
-	// 4) Chama main()
-	ret, err := nm.LuaManager.CallGlobalFunc("main", 1)
-	if err != nil {
-		log.Printf("error calling main function: %s", err)
-		nm.Status = StatusFailed
-		return nm.Status
-	}
+    // 4) Chama main()
+    ret, err := nm.LuaManager.CallGlobalFunc("main", 1)
+    if err != nil {
+        log.Printf("error calling main function: %s", err)
+        nm.Status = StatusFailed
+        return nm.Status
+    }
 
-	if len(ret) > 0 {
-		log.Println(ret[0].String())
-	}
+    if len(ret) > 0 {
+        log.Println(ret[0].String())
+    }
 
-	// 5) Interpreta retorno do main e guarda em Payloads
-	if err := nm.resolveMainReturn(ret); err != nil {
-		log.Printf("returned invalid value: %s", err)
-		nm.Status = StatusFailed
-		return nm.Status
-	}
+    // 5) Interpreta retorno do main e guarda em Payloads
+    if err := nm.resolveMainReturn(ret); err != nil {
+        log.Printf("returned invalid value: %s", err)
+        nm.Status = StatusFailed
+        return nm.Status
+    }
 
-	// 6) Exporta, se for nó de saída
-	if nm.ExportFlag {
-		if err := nm.Export(); err != nil {
-			log.Printf("Error while exporting of %s: %v", nm.ModuleName, err)
-			nm.Status = StatusFailed
-			return nm.Status
-		}
-	}
+    // 6) Exporta, se for nó de saída
+    if nm.ExportFlag {
+        if err := nm.Export(); err != nil {
+            log.Printf("Error while exporting of %s: %v", nm.ModuleName, err)
+            nm.Status = StatusFailed
+            return nm.Status
+        }
+    }
 
-	nm.Status = StatusSuccess
-	return nm.Status
+    nm.Status = StatusSuccess
+    return nm.Status
 }
 
 // ============================================================================
