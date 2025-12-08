@@ -123,28 +123,50 @@ func (nm *NodeModule) getInputFromAdapter() (*df.Dataframe, error) {
 }
 
 func (nm *NodeModule) registerAdapterInput() error {
-	dataframe, err := nm.getInputFromAdapter()
-	if err != nil {
-		return fmt.Errorf("adapter %v of %v: Error while creating adapter - %v ", nm.Adapter, nm.ModuleName, err)
-	}
+    // 🔹 Se não tem InArgs ou não tem filepath válido, não há input direto de arquivo
+    if nm.InArgs == nil {
+        return nil
+    }
 
-	// Nó sem input de arquivo (ex: só depende de outros nós)
-	if dataframe == nil {
-		return nil
-	}
+    v, ok := nm.InArgs["filepath"]
+    if !ok {
+        // não há campo de arquivo definido pra esse módulo
+        return nil
+    }
 
-	if nm.Payloads == nil {
-		nm.Payloads = make(map[string]*df.Dataframe)
-	}
+    s, ok2 := v.(string)
+    if !ok2 || s == "" {
+        // campo existe mas está vazio → não tenta criar adapter
+        return nil
+    }
 
-	varName := nm.ModuleName + "_input"
-	nm.Payloads[varName] = dataframe
+    // Daqui pra baixo: existe filepath não-vazio → cria reader normalmente
+    dataframe, err := nm.getInputFromAdapter()
+    if err != nil {
+        return fmt.Errorf(
+            "adapter %v of %v: Error while creating adapter - %v ",
+            nm.Adapter, nm.ModuleName, err,
+        )
+    }
 
-	// expõe no Lua como, por exemplo, Module_1_input
-	nm.LuaManager.RegisterPayload(varName, dataframe)
+    // Nó sem input de arquivo (segurança extra, caso getInputFromAdapter volte nil)
+    if dataframe == nil {
+        return nil
+    }
 
-	return nil
+    if nm.Payloads == nil {
+        nm.Payloads = make(map[string]*df.Dataframe)
+    }
+
+    varName := nm.ModuleName + "_input"
+    nm.Payloads[varName] = dataframe
+
+    // expõe no Lua como, por exemplo, Module_1_input
+    nm.LuaManager.RegisterPayload(varName, dataframe)
+
+    return nil
 }
+
 
 // ============================================================================
 // Dependências (payloads herdados de outros módulos)
