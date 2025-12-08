@@ -79,9 +79,21 @@ func (lm *LuaManager) CallGlobalFunc(name string, nrets int) ([]lua.LValue, erro
 
 }
 
-func (lm *LuaManager) RegisterPayload(name string, dataframe *df.Dataframe) {
-	ud := lm.L.NewUserData()
-	ud.Value = dataframe
-	lm.L.SetMetatable(ud, lm.L.GetTypeMetatable("dataframe"))
-	lm.L.SetGlobal(name, ud)
+// função livre
+func RegisterPayload(L *lua.LState, name string, dfPtr *df.Dataframe) {
+	ud := L.NewUserData()
+	ud.Value = dfPtr
+
+	mt := L.GetTypeMetatable("dataframe")
+	if mt == lua.LNil {
+		panic("metatable 'dataframe' not registered before RegisterPayload")
+	}
+	L.SetMetatable(ud, mt)
+	L.SetGlobal(name, ud)
 }
+
+// método de atalho no LuaManager
+func (lm *LuaManager) RegisterPayload(name string, dfPtr *df.Dataframe) {
+	RegisterPayload(lm.L, name, dfPtr)
+}
+

@@ -1,0 +1,16 @@
+{
+  "id": "Module_2",
+  "adapter": "excel",
+  "depends": [],
+  "input_args": {
+    "batch_read": false,
+    "filepath": "C:\\Users\\Alan\\Desktop\\Nova pasta\\Pipeline Vendas\\produtos.xlsx",
+    "header_row": 1,
+    "sheet_name": "",
+    "start_column": 1
+  },
+  "output_args": {
+    "header_row": 1
+  },
+  "export": false
+}

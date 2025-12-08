@@ -19,17 +19,26 @@ type DAG struct {
 }
 
 func BuildGraph(manifest *fh.Manifest) *DAG {
-	dag := DAG{Nodes: make(map[string]*NodeModule),
-		Edges: make(map[string][]string)}
+	dag := DAG{
+		Nodes: make(map[string]*NodeModule),
+		Edges: make(map[string][]string),
+	}
 	root := filepath.Dir(manifest.ManifestPath)
 	ctx := &RuntimeContext{
 		Global: make(map[string]any),
 	}
+
 	for _, node := range manifest.NodeList {
+		// pega export_as de forma segura
 		var output string
 		if node.OutputArgs != nil {
-			output = node.OutputArgs["export_as"].(string)
+			if v, ok := node.OutputArgs["export_as"]; ok && v != nil {
+				if s, ok2 := v.(string); ok2 && s != "" {
+					output = s
+				}
+			}
 		}
+
 		newModule := &NodeModule{
 			ModuleName: node.Id,
 			Adapter:    node.Adapter,
@@ -59,9 +68,11 @@ func BuildGraph(manifest *fh.Manifest) *DAG {
 			}
 		}
 	}
+
 	dag.Sorted = dag.exectutionLayers()
 	return &dag
 }
+
 
 func (dag *DAG) validate() error {
 	visitState := map[string]int{}

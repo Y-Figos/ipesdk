@@ -1,0 +1,18 @@
+ {
+  "id": "Module_4",
+  "adapter": "",
+  "depends": ["Module_1", "Module_2", "Module_3"],
+  "input_args": {},
+  "output_args": {
+    "export_as": "excel",
+    "filepath": "C:\\Users\\Alan\\Desktop\\Nova pasta\\Pipeline Vendas\\vendas_final.xlsx",
+    "header_row": 1,
+    "sheet_order": [
+      "fat_por_mes",
+      "top_produtos",
+      "top_lojas"
+    ],
+    "start_column": 1
+  },
+  "export": true
+}
