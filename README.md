@@ -1,29 +1,46 @@
-# IPE SDK Alpha Todo
+# IPE SDK: Advanced Data Pipeline & Automation Engine
 
-* [X] Create Dataframe like type
-  * [X] Create CSV Reader
-  * [X] Implement Type Inference
-  * [ ] String() Implementation
-  * [X] filter
-  * [X] map
-  * [X] apply
-  * [X] unique
-  * [X] append
-* [X] Create Basic input, output ports and adapters (XLSX, csv)
-* [X] Implement Engine v1 (Run selected pipelines dynamically)
-* [X] Implement pipeline v1 reader (detect lua files dynamically)
-* [ ] Add config.json for non technical settings of pipeline
-* [X] Implement .ipe builder
-* [X] Implement .ipe Extractor
-* [X] Create CLI for running pipelines
-
-# Chores
-
-* [X] Refactor CSV Reader Type Inference to be more reusable across other adapters
+O **IPE SDK** é uma engine de automação extensível desenvolvida em **Go**, projetada para gerenciar fluxos complexos de processamento de dados e tarefas sistêmicas. Diferente de scripts lineares, o IPE utiliza uma estrutura de **Grafo Acíclico Dirigido (DAG)** para orquestrar a execução de tarefas interdependentes com alta performance e segurança.
 
 
 
+## Diferenciais Técnicos e Arquitetura
 
+O projeto foi construído sob princípios de **Engenharia de Plataforma**, focando em desacoplamento, performance concorrente e extensibilidade:
+
+* **Native Concurrency:** O motor de execução utiliza **goroutines** e **sync.WaitGroup** para processar nós independentes de forma paralela. Ele identifica automaticamente camadas de execução no grafo, otimizando o tempo total do pipeline.
+* **Dependency Management (DAG):** Implementação robusta de grafos para orquestração de tarefas. O motor realiza a ordenação topológica e validação de ciclos para garantir a integridade do fluxo de trabalho.
+* **Extensibilidade via Lua:** Suporte nativo para scripts Lua através de um `LuaManager`. Isso permite que a lógica de negócio ou transformações de dados sejam injetadas dinamicamente sem a necessidade de recompilar o binário principal.
+* **Data Abstraction (Dataframes):** Camada de manipulação de dados em memória inspirada em ferramentas de Data Science, permitindo transformações complexas, filtragens e inferência de tipos de forma eficiente.
+* **Adapter Pattern:** Arquitetura modular com suporte a múltiplos formatos de entrada e saída (CSV, XLSX, Custom Logs), facilitando a ingestão de dados de sistemas legados de infraestrutura.
+* **Professional CLI:** Interface de linha de comando construída com **Cobra CLI**, seguindo os padrões de ferramentas *industry-standard* como `kubectl` e `docker`.
+
+## Stack Tecnológica
+
+* **Linguagem Principal:** Go (Golang)
+* **Scripting:** Lua (Gopher-Lua)
+* **CLI Framework:** Cobra
+* **Concorrência:** Canais (Channels) e WaitGroups para controle de fluxo.
+
+## Estrutura do Projeto
+
+* `/cmd`: Ponto de entrada da CLI e definição de comandos de execução e build.
+* `/core/graph`: Motor do Grafo, lógica de ordenação topológica e execução concorrente.
+* `/core/engine`: Runner responsável pela ponte entre o core em Go e os scripts Lua.
+* `/core/df`: Implementação de Dataframes e motores de inferência de tipos de colunas.
+* `/core/adapters`: Conectores modulares para diferentes fontes de dados (CSV, Excel, Logs).
+
+## Roadmap de Evolução Técnica
+
+Este projeto consolidou a prova de conceito de um motor de automação robusto. Os próximos passos focam em **Segurança de Runtime** e **Abstração de Interfaces**:
+
+1.  **Abstração de Executores (Go Interfaces):** Refatoração do motor para utilizar uma `Executor interface`, permitindo a criação de novos tipos de módulos nativos em Go (além dos módulos Lua atuais), aumentando a performance para tarefas computacionalmente intensas.
+2.  **Lua Sandboxing:** Implementação de isolamento para o ambiente Lua, restringindo o acesso a bibliotecas sensíveis do sistema (OS, IO) e definindo limites de memória e tempo de execução por script.
+3.  **Observabilidade Nativa:** Implementação de logs estruturados (padrão JSON) e exportação de métricas via Prometheus para monitoramento de saúde e tempo de execução dos nós.
+4.  **Context Propagation:** Uso extensivo de `context.Context` para permitir cancelamentos graciosos e gerenciamento de timeouts em pipelines de longa duração.
+
+---
+*Desenvolvido como projeto de conclusão de curso em Ciência da Computação (2025).*
 
 ---
 
