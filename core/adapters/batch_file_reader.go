@@ -40,7 +40,7 @@ func (bf *BatchFileReader) getFileList() ([]string, error) {
 
 func (bf *BatchFileReader) readBatchFiles(filesList []string, in_args map[string]any) ([]*df.Dataframe, error) {
 	bf.FailedFiles = make(map[string]string)
-	var dfList []*df.Dataframe // lista apenas com arquivos válidos
+	var dfList []*df.Dataframe
 
 	for _, file := range filesList {
 		localArgs := maps.Clone(in_args)
@@ -54,11 +54,11 @@ func (bf *BatchFileReader) readBatchFiles(filesList []string, in_args map[string
 
 		dataframe, err := reader.GetData()
 		if err != nil {
-			bf.FailedFiles[file] = fmt.Sprintf("%v",err) // só a path
+			bf.FailedFiles[file] = fmt.Sprintf("%v",err) 
 			continue
 		}
 
-		dfList = append(dfList, dataframe) // adiciona apenas os válidos
+		dfList = append(dfList, dataframe)
 	}
 
 	if len(dfList) == 0 {
@@ -116,3 +116,4 @@ func (bf *BatchFileReader) MergeFiles(out_args map[string]any) (*df.Dataframe, e
     fmt.Printf("Final dataframe: %d rows\n", mainDataframe.RowCount())
     return mainDataframe, nil
 }
+
