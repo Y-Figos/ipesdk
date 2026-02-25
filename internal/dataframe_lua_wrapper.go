@@ -40,7 +40,6 @@ func columnApply(L *lua.LState) int {
 func columnMap(L *lua.LState) int {
 	column := checkUserDataAs[df.ColumnInterface](L, 1)
 	table := L.CheckTable(2)
-	// mapParam := make(map[any]any)
 	converted := utils.ConvertLuaTypeToGoType(table).(map[any]any)
 	newcolumn := column.Map(converted)
 	ud := wrap(L, newcolumn, "column")
@@ -144,12 +143,11 @@ func dataframeIndex(L *lua.LState) int {
 		// Wrap the column as Lua userdata
 		colUD := L.NewUserData()
 		colUD.Value = col
-		L.SetMetatable(colUD, L.GetTypeMetatable("column")) // assuming you have a "column" metatable
+		L.SetMetatable(colUD, L.GetTypeMetatable("column"))
 		L.Push(colUD)
 		return 1
 	}
 
-	// key not found, return nil
 	L.Push(lua.LNil)
 	return 1
 }
@@ -157,9 +155,8 @@ func dataframeIndex(L *lua.LState) int {
 func dataframeNewIndex(L *lua.LState) int {
 	dfUd := checkUserDataAs[*df.Dataframe](L, 1)
 	key := L.CheckString(2)
-	val := L.CheckUserData(3) // your column wrapper
+	val := L.CheckUserData(3)
 
-	// Optionally check val's type:
 	col, ok := val.Value.(df.ColumnInterface)
 	if !ok {
 		L.RaiseError("expected ColumnInterface")
@@ -200,3 +197,4 @@ func dataframeAppend(L *lua.LState) int {
 	mydf.Append(otherdf)
 	return 0
 }
+
