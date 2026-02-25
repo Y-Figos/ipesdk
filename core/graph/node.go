@@ -39,10 +39,6 @@ type NodeModule struct {
 	Context    *RuntimeContext
 }
 
-// ============================================================================
-// Leitura de batch (vários arquivos)
-// ============================================================================
-
 func (nm *NodeModule) readBatchFiles(reader adapters.InputAdapterFactory) (*df.Dataframe, error) {
 	dir, ok := nm.InArgs["filepath"].(string)
 	if !ok || dir == "" {
@@ -86,12 +82,9 @@ func (nm *NodeModule) readBatchFiles(reader adapters.InputAdapterFactory) (*df.D
 	return newDf, nil
 }
 
-// ============================================================================
-// Input Adapter
-// ============================================================================
+
 
 func (nm *NodeModule) getInputFromAdapter() (*df.Dataframe, error) {
-	// Nó sem adapter de entrada (ex: só recebe deps)
 	if nm.Adapter == "" {
 		return nil, nil
 	}
@@ -101,7 +94,7 @@ func (nm *NodeModule) getInputFromAdapter() (*df.Dataframe, error) {
 		return nil, fmt.Errorf("adapter %v of %v do not exist", nm.Adapter, nm.ModuleName)
 	}
 
-	// batch_read = true  → lê pasta
+	
 	if flag, ok := nm.InArgs["batch_read"].(bool); ok && flag {
 		dataframe, err := nm.readBatchFiles(factory)
 		if err != nil {
@@ -110,7 +103,7 @@ func (nm *NodeModule) getInputFromAdapter() (*df.Dataframe, error) {
 		return dataframe, nil
 	}
 
-	// modo normal: arquivo único
+	
 	adapter, err := factory(nm.InArgs)
 	if err != nil {
 		return nil, fmt.Errorf("adapter %v of %v: Error while creating adapter - %v ", nm.Adapter, nm.ModuleName, err)
@@ -123,24 +116,24 @@ func (nm *NodeModule) getInputFromAdapter() (*df.Dataframe, error) {
 }
 
 func (nm *NodeModule) registerAdapterInput() error {
-    // 🔹 Se não tem InArgs ou não tem filepath válido, não há input direto de arquivo
+   
     if nm.InArgs == nil {
         return nil
     }
 
     v, ok := nm.InArgs["filepath"]
     if !ok {
-        // não há campo de arquivo definido pra esse módulo
+     
         return nil
     }
 
     s, ok2 := v.(string)
     if !ok2 || s == "" {
-        // campo existe mas está vazio → não tenta criar adapter
+       
         return nil
     }
 
-    // Daqui pra baixo: existe filepath não-vazio → cria reader normalmente
+   
     dataframe, err := nm.getInputFromAdapter()
     if err != nil {
         return fmt.Errorf(
@@ -149,7 +142,7 @@ func (nm *NodeModule) registerAdapterInput() error {
         )
     }
 
-    // Nó sem input de arquivo (segurança extra, caso getInputFromAdapter volte nil)
+   
     if dataframe == nil {
         return nil
     }
@@ -161,16 +154,12 @@ func (nm *NodeModule) registerAdapterInput() error {
     varName := nm.ModuleName + "_input"
     nm.Payloads[varName] = dataframe
 
-    // expõe no Lua como, por exemplo, Module_1_input
+    
     nm.LuaManager.RegisterPayload(varName, dataframe)
 
     return nil
 }
 
-
-// ============================================================================
-// Dependências (payloads herdados de outros módulos)
-// ============================================================================
 
 func (nm *NodeModule) resolveDependencies() error {
 	for _, dependency := range nm.Depends {
@@ -205,13 +194,10 @@ func (nm *NodeModule) resolveDependencies() error {
 	return nil
 }
 
-// ============================================================================
-// Tratamento do retorno do main() em Lua
-// ============================================================================
 
 func (nm *NodeModule) resolveMainReturn(ret []lua.LValue) error {
 	if len(ret) == 0 || ret[0] == lua.LNil {
-		// main() não retornou nada → ok
+		
 		return nil
 	}
 
@@ -222,7 +208,7 @@ func (nm *NodeModule) resolveMainReturn(ret []lua.LValue) error {
 	switch val := ret[0].(type) {
 
 	case *lua.LUserData:
-		// main() retorna diretamente um dataframe
+	
 		if dfPtr, ok := val.Value.(*df.Dataframe); ok {
 			nm.Payloads[nm.ModuleName+"_payload"] = dfPtr
 			return nil
@@ -230,7 +216,6 @@ func (nm *NodeModule) resolveMainReturn(ret []lua.LValue) error {
 		return fmt.Errorf("returned LUserData is not *df.Dataframe")
 
 	case *lua.LTable:
-		// main() retorna tabela: { nome = dataframe, ... }
 		val.ForEach(func(key, value lua.LValue) {
 			name := key.String()
 			if ud, ok := value.(*lua.LUserData); ok {
@@ -247,18 +232,15 @@ func (nm *NodeModule) resolveMainReturn(ret []lua.LValue) error {
 	return fmt.Errorf("main() did not return a dataframe or table: %v", nm.ModuleName)
 }
 
-// ============================================================================
-// Execução do módulo
-// ============================================================================
 
 func (nm *NodeModule) Run() ModuleStatus {
     nm.Status = StatusRunning
 
-    // cria VM Lua com contexto global compartilhado
+   
     nm.LuaManager = engine.NewLuaManager(nm.Context.Global)
     defer nm.LuaManager.L.Close()
 
-    // 1) Lê adapter de entrada (se tiver) e expõe no Lua
+    
     if nm.InArgs != nil {
         if _, hasPath := nm.InArgs["filepath"]; hasPath {
             if err := nm.registerAdapterInput(); err != nil {
@@ -269,21 +251,21 @@ func (nm *NodeModule) Run() ModuleStatus {
         }
     }
 
-    // 2) Puxa payloads das dependências e registra no Lua
+    
     if err := nm.resolveDependencies(); err != nil {
         log.Printf("error resolving dependencies %s", err)
         nm.Status = StatusFailed
         return nm.Status
     }
 
-    // 3) Carrega script Lua do módulo
+   
     if err := nm.LuaManager.LoadScript(nm.ScriptPath); err != nil {
         log.Printf("error loading lua script for %s: %s", nm.ModuleName, err)
         nm.Status = StatusFailed
         return nm.Status
     }
 
-    // 4) Chama main()
+    
     ret, err := nm.LuaManager.CallGlobalFunc("main", 1)
     if err != nil {
         log.Printf("error calling main function: %s", err)
@@ -295,14 +277,12 @@ func (nm *NodeModule) Run() ModuleStatus {
         log.Println(ret[0].String())
     }
 
-    // 5) Interpreta retorno do main e guarda em Payloads
     if err := nm.resolveMainReturn(ret); err != nil {
         log.Printf("returned invalid value: %s", err)
         nm.Status = StatusFailed
         return nm.Status
     }
 
-    // 6) Exporta, se for nó de saída
     if nm.ExportFlag {
         if err := nm.Export(); err != nil {
             log.Printf("Error while exporting of %s: %v", nm.ModuleName, err)
@@ -315,10 +295,6 @@ func (nm *NodeModule) Run() ModuleStatus {
     return nm.Status
 }
 
-// ============================================================================
-// Export
-// ============================================================================
-
 func (nm *NodeModule) Export() error {
 	if nm.DataOutput == "" {
 		return errors.New("no Output was set")
@@ -330,7 +306,6 @@ func (nm *NodeModule) Export() error {
 		return errors.New("output not valid")
 	}
 
-	// export_hook opcional (pré-processa OutArgs via Lua)
 	if useHook, ok := nm.OutArgs["use_export_hook"].(bool); ok && useHook {
 		if err := nm.export_hook(); err != nil {
 			return err
@@ -358,10 +333,6 @@ func (nm *NodeModule) Export() error {
 	return nil
 }
 
-// ============================================================================
-// export_hook
-// ============================================================================
-
 func (nm *NodeModule) export_hook() error {
 	ret, err := nm.LuaManager.CallGlobalFunc("export_hook", 1)
 	if err != nil {
@@ -385,3 +356,4 @@ func (nm *NodeModule) export_hook() error {
 
 	return nil
 }
+
