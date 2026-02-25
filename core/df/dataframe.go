@@ -85,7 +85,7 @@ func (c *Column[T]) AppendValue(val any) error {
 		return fmt.Errorf("cannot convert %v (%T) to %v: %w", val, val, target, err)
 	}
 
-	// Convert finalValue (any) into T using reflection
+	
 	converted, ok := finalValue.(T)
 	if !ok {
 		return fmt.Errorf("conversion succeeded but type assertion to T failed: %T", finalValue)
@@ -233,13 +233,11 @@ func (c Column[T]) String() string {
 	return column.String()
 }
 
-// ----------------------------------------------------------------------------------------------
 type Dataframe struct {
 	ColumnOrder []string
 	Columns     map[string]ColumnInterface
 }
 
-// TODO
 func (df Dataframe) String() string {
 	if len(df.Columns) == 0 {
 		return "Empty DataFrame"
@@ -264,7 +262,6 @@ func (df Dataframe) String() string {
 		colWidths[colName] = maxLen
 	}
 
-	// 2️⃣ Decide quais colunas mostrar
 	displayCols := []string{}
 	if len(df.ColumnOrder) <= maxDisplayColumns {
 		displayCols = df.ColumnOrder
@@ -272,19 +269,18 @@ func (df Dataframe) String() string {
 		head := maxDisplayColumns / 2
 		tail := maxDisplayColumns - head
 		displayCols = append(displayCols, df.ColumnOrder[:head]...)
-		displayCols = append(displayCols, "...") // marcador de colunas omitidas
+		displayCols = append(displayCols, "...")
 		displayCols = append(displayCols, df.ColumnOrder[len(df.ColumnOrder)-tail:]...)
 	}
 
-	// 3️⃣ Prepara builder e escreve cabeçalho
 	var out strings.Builder
 	out.WriteString("\n")
 
-	// largura do índice de linha
+	
 	rowCount := df.RowCount()
 	rowIdxWidth := len(fmt.Sprint(rowCount))
 
-	out.WriteString(fmt.Sprintf("%*s  ", rowIdxWidth, "")) // espaço pro índice
+	out.WriteString(fmt.Sprintf("%*s  ", rowIdxWidth, "")) 
 	for _, colName := range displayCols {
 		if colName == "..." {
 			out.WriteString("...  ")
@@ -296,7 +292,7 @@ func (df Dataframe) String() string {
 	}
 	out.WriteString("\n")
 
-	// 4️⃣ Decide quais linhas mostrar
+	
 	rowsToShow := []int{}
 	if rowCount <= maxDisplayRows {
 		for i := 0; i < rowCount; i++ {
@@ -308,13 +304,13 @@ func (df Dataframe) String() string {
 		for i := 0; i < head; i++ {
 			rowsToShow = append(rowsToShow, i)
 		}
-		rowsToShow = append(rowsToShow, -1) // marcador de linhas omitidas
+		rowsToShow = append(rowsToShow, -1) 
 		for i := rowCount - tail; i < rowCount; i++ {
 			rowsToShow = append(rowsToShow, i)
 		}
 	}
 
-	// 5️⃣ Escreve as linhas
+	
 	for _, rowIdx := range rowsToShow {
 		if rowIdx == -1 {
 			out.WriteString(fmt.Sprintf("%*s  ...\n", rowIdxWidth, ""))
@@ -335,7 +331,7 @@ func (df Dataframe) String() string {
 			if rowIdx < col.Len() {
 				val = fmt.Sprint(col.GetValue(rowIdx))
 			} else {
-				val = "" // preenche vazio se coluna for menor
+				val = ""
 			}
 
 			out.WriteString(fmt.Sprintf("%-*s", width, truncate(val, width)))
@@ -405,7 +401,7 @@ func (df *Dataframe) RowSlice(i int) []string {
 		if i < len(data) {
 			row = append(row, fmt.Sprint(data[i]))
 		} else {
-			row = append(row, "") // or some default value
+			row = append(row, "")
 		}
 	}
 	return row
@@ -423,7 +419,7 @@ func (df *Dataframe) Filter(predicate func(map[string]any) bool) *Dataframe {
 	row := make(map[string]any, len(df.Columns))
 
 	for i := 0; i < rowCount; i++ {
-		// Build row without copying full columns
+		
 		for name, col := range df.Columns {
 			row[name] = col.GetValue(i)
 		}
@@ -451,14 +447,13 @@ func (df *Dataframe) FilterLua(L *lua.LState, fn *lua.LFunction) (*Dataframe, er
 	for i := 0; i < rowCount; i++ {
 		luaRow := L.NewTable()
 
-		// Construct row table for Lua
+		
 		for name, col := range df.Columns {
 			goVal := col.GetValue(i)
 			luaVal := utils.ConvertAnytoLuaType(L, goVal)
 			L.SetField(luaRow, name, luaVal)
 		}
 
-		// Call the Lua function with row table
 		err := L.CallByParam(lua.P{
 			Fn:      fn,
 			NRet:    1,
@@ -468,9 +463,8 @@ func (df *Dataframe) FilterLua(L *lua.LState, fn *lua.LFunction) (*Dataframe, er
 			return nil, fmt.Errorf("error in filter predicate at row %d: %v", i, err)
 		}
 
-		// Get and evaluate return value
 		ret := L.Get(-1)
-		L.Pop(1) // pop result from stack
+		L.Pop(1)
 
 		if lua.LVAsBool(ret) {
 			for name, col := range newCols {
@@ -511,7 +505,7 @@ func (df *Dataframe) PadColumns() error {
 		return nil
 	}
 
-	// 1. Find the max row count
+	
 	maxRows := 0
 	for _, col := range df.Columns {
 		if col.Len() > maxRows {
@@ -519,11 +513,10 @@ func (df *Dataframe) PadColumns() error {
 		}
 	}
 
-	// 2. Pad each column to match maxRows
+	
 	for name, col := range df.Columns {
 		currentLen := col.Len()
 		for i := currentLen; i < maxRows; i++ {
-			// Use type-specific zero values instead of nil
 			var padValue any
 			switch col.Type().Kind() {
 			case reflect.Int:
@@ -548,14 +541,14 @@ func (df *Dataframe) PadColumns() error {
 func (df *Dataframe) EmptyClone() *Dataframe {
     newColumns := make(map[string]ColumnInterface, len(df.Columns))
     
-    // Clone each column structure without data
+    
     for name, col := range df.Columns {
         newColumns[name] = col.EmptyClone()
     }
     
-    // Create new dataframe with same structure
+    
     return &Dataframe{
-        ColumnOrder: append([]string{}, df.ColumnOrder...), // Create new slice with same values
+        ColumnOrder: append([]string{}, df.ColumnOrder...),
         Columns:     newColumns,
     }
 }
@@ -563,7 +556,7 @@ func (df *Dataframe) EmptyClone() *Dataframe {
 func (df *Dataframe) Clone() *Dataframe {
     newColumns := make(map[string]ColumnInterface, len(df.Columns))
     
-    // Clone each column with data
+    
     for name, col := range df.Columns {
         newCol := col.EmptyClone()
         for _, val := range col.DataSlice() {
@@ -576,4 +569,5 @@ func (df *Dataframe) Clone() *Dataframe {
         ColumnOrder: append([]string{}, df.ColumnOrder...),
         Columns:     newColumns,
     }
+
 }
