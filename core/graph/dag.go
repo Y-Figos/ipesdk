@@ -29,7 +29,7 @@ func BuildGraph(manifest *fh.Manifest) *DAG {
 	}
 
 	for _, node := range manifest.NodeList {
-		// pega export_as de forma segura
+	
 		var output string
 		if node.OutputArgs != nil {
 			if v, ok := node.OutputArgs["export_as"]; ok && v != nil {
@@ -221,8 +221,9 @@ func (dag *DAG) RunModule(selectedNode *NodeModule) error {
 			}
 		}
 		if shouldStop {
-			break // break the outer loop
+			break
 		}
 	}
 	return nil
 }
+
