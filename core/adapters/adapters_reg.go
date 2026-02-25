@@ -13,9 +13,6 @@ type InputAdapterFactory func(args map[string]any) (ports.InputInterface, error)
 var InputAdapterRegistry = map[string]InputAdapterFactory{
 	"csv":              CSVReaderFactory,
 	"excel":            ExcelReaderFactory,
-	"tim_reader":       TimLogReader,
-	"tim_reader_alarm": TimLogReaderAlarm,
-	//
 }
 
 type OutputAdapterFactory func(args map[string]any, payload map[string]*df.Dataframe) (ports.OutputInterface, error)
@@ -160,31 +157,5 @@ func InterfaceSliceToStringSlice(raw []interface{}) ([]string, error) {
 		strs[i] = s
 	}
 	return strs, nil
-}
-
-func TimLogReader(args map[string]any) (ports.InputInterface, error) {
-	filePath, ok := args["filepath"].(string)
-	if !ok || filePath == "" {
-		return nil, fmt.Errorf("'filepath' is required and must be a string")
-	}
-	header_pattern, ok := args["header_pattern"].(string)
-	if !ok || filePath == "" {
-		return nil, fmt.Errorf("'filepath' is required and must be a string")
-	}
-
-	return &LogReaderTim{
-		Filepath:       filePath,
-		HeadersPattern: header_pattern,
-	}, nil
-}
-
-func TimLogReaderAlarm(args map[string]any) (ports.InputInterface, error) {
-	filePath, ok := args["filepath"].(string)
-	if !ok || filePath == "" {
-		return nil, fmt.Errorf("'filepath' is required and must be a string")
-	}
-	return &LogReader{
-		Filepath: filePath,
-	}, nil
 }
 
