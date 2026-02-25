@@ -6,8 +6,6 @@ import (
 	lua "github.com/yuin/gopher-lua"
 )
 
-// Registering CSV Reader Input Adapter TODO: Remove this, Go will handle inputs later
-
 func RegisterCSVReader(L *lua.LState) int {
 	ud := L.NewUserData()
 	ud.Value = adapters.NewCSVReaderWithOptions("", 0, 0)
@@ -49,3 +47,4 @@ func RegisterReaderType(L *lua.LState) {
 		"get_data": getData,
 	}))
 }
+
