@@ -34,7 +34,7 @@ func (lm *LuaManager) InjectContextTable(globalContext map[string]any) {
 	contextTable := lm.L.NewTable()
 
 	for key, value := range globalContext {
-		lm.L.SetField(contextTable, key, utils.ConvertAnytoLuaType(lm.L, value)) // your existing converter
+		lm.L.SetField(contextTable, key, utils.ConvertAnytoLuaType(lm.L, value))
 	}
 
 	lm.L.SetGlobal("context", contextTable)
@@ -79,7 +79,7 @@ func (lm *LuaManager) CallGlobalFunc(name string, nrets int) ([]lua.LValue, erro
 
 }
 
-// função livre
+
 func RegisterPayload(L *lua.LState, name string, dfPtr *df.Dataframe) {
 	ud := L.NewUserData()
 	ud.Value = dfPtr
@@ -92,8 +92,8 @@ func RegisterPayload(L *lua.LState, name string, dfPtr *df.Dataframe) {
 	L.SetGlobal(name, ud)
 }
 
-// método de atalho no LuaManager
 func (lm *LuaManager) RegisterPayload(name string, dfPtr *df.Dataframe) {
 	RegisterPayload(lm.L, name, dfPtr)
 }
+
 
