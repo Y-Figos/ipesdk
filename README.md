@@ -1,49 +1,46 @@
-# IPE SDK: Advanced Data Pipeline & Automation Engine
+# IPE SDK: Data Pipeline & Automation Engine
 
-O **IPE SDK** é uma engine de automação extensível desenvolvida em **Go**, projetada para gerenciar fluxos complexos de processamento de dados e tarefas sistêmicas. Diferente de scripts lineares, o IPE utiliza uma estrutura de **Grafo Acíclico Dirigido (DAG)** para orquestrar a execução de tarefas interdependentes com alta performance e segurança.
+The **IPE SDK** is an extensible automation engine developed in **Go**, designed to manage complex data processing workflows and systemic tasks. Unlike linear scripts, IPE utilizes a **Directed Acyclic Graph (DAG)** structure to orchestrate the execution of interdependent tasks with high performance and safety.
 
+## Technical Differentiators and Architecture
 
+The project was built under **Platform Engineering** principles, focusing on decoupling, concurrent performance, and extensibility:
 
-## Diferenciais Técnicos e Arquitetura
+* **Native Concurrency:** The execution engine uses **goroutines** and **sync.WaitGroup** to process independent nodes in parallel. It automatically identifies execution layers in the graph, optimizing the total pipeline time.
+* **Dependency Management (DAG):** Robust graph implementation for task orchestration. The engine performs topological sorting and cycle validation to ensure workflow integrity.
+* **Extensibility via Lua:** Native support for Lua scripts through a `LuaManager`. This allows business logic or data transformations to be injected dynamically without the need to recompile the main binary.
+* **Data Abstraction (Dataframes):** In-memory data manipulation layer inspired by Data Science tools, allowing complex transformations, filtering, and type inference efficiently.
+* **Adapter Pattern:** Modular architecture with support for multiple input and output formats (CSV, XLSX, Custom Logs), facilitating data ingestion from legacy infrastructure systems.
+* **Professional CLI:** Command-line interface built with **Cobra CLI**, following industry-standard tool patterns like `kubectl` and `docker`.
 
-O projeto foi construído sob princípios de **Engenharia de Plataforma**, focando em desacoplamento, performance concorrente e extensibilidade:
+## Technology Stack
 
-* **Native Concurrency:** O motor de execução utiliza **goroutines** e **sync.WaitGroup** para processar nós independentes de forma paralela. Ele identifica automaticamente camadas de execução no grafo, otimizando o tempo total do pipeline.
-* **Dependency Management (DAG):** Implementação robusta de grafos para orquestração de tarefas. O motor realiza a ordenação topológica e validação de ciclos para garantir a integridade do fluxo de trabalho.
-* **Extensibilidade via Lua:** Suporte nativo para scripts Lua através de um `LuaManager`. Isso permite que a lógica de negócio ou transformações de dados sejam injetadas dinamicamente sem a necessidade de recompilar o binário principal.
-* **Data Abstraction (Dataframes):** Camada de manipulação de dados em memória inspirada em ferramentas de Data Science, permitindo transformações complexas, filtragens e inferência de tipos de forma eficiente.
-* **Adapter Pattern:** Arquitetura modular com suporte a múltiplos formatos de entrada e saída (CSV, XLSX, Custom Logs), facilitando a ingestão de dados de sistemas legados de infraestrutura.
-* **Professional CLI:** Interface de linha de comando construída com **Cobra CLI**, seguindo os padrões de ferramentas *industry-standard* como `kubectl` e `docker`.
-
-## Stack Tecnológica
-
-* **Linguagem Principal:** Go (Golang)
+* **Main Language:** Go (Golang)
 * **Scripting:** Lua (Gopher-Lua)
 * **CLI Framework:** Cobra
-* **Concorrência:** Canais (Channels) e WaitGroups para controle de fluxo.
+* **Concurrency:** Channels and WaitGroups for flow control.
 
-## Estrutura do Projeto
+## Project Structure
 
-* `/cmd`: Ponto de entrada da CLI e definição de comandos de execução e build.
-* `/core/graph`: Motor do Grafo, lógica de ordenação topológica e execução concorrente.
-* `/core/engine`: Runner responsável pela ponte entre o core em Go e os scripts Lua.
-* `/core/df`: Implementação de Dataframes e motores de inferência de tipos de colunas.
-* `/core/adapters`: Conectores modulares para diferentes fontes de dados (CSV, Excel, Logs).
+* `/cmd`: CLI entry point and definition of execution and build commands.
+* `/core/graph`: Graph engine, topological sorting logic, and concurrent execution.
+* `/core/engine`: Runner responsible for the bridge between the Go core and Lua scripts.
+* `/core/df`: DataFrame implementation and column type inference engines.
+* `/core/adapters`: Modular connectors for different data sources (CSV, Excel, Logs).
 
-## Roadmap de Evolução Técnica (v1.0)
+## Technical Evolution Roadmap (v1.0)
 
-Este projeto consolidou a prova de conceito (v0.1) de um motor de automação robusto baseado em DAGs. Para a arquitetura de uma versão voltada para produção (v1.0), as seguintes decisões de design (ADRs) foram mapeadas, focando em **Performance**, **Extensibilidade** e **Padronização**:
+This project consolidated the proof of concept (v0.1) of a robust automation engine based on DAGs. For the architecture of a production-ready version (v1.0), the following design decisions (ADRs) were mapped, focusing on **Performance**, **Extensibility**, and **Standardization**:
 
-1.  **Transição para Nodes Nativos (Go-Only):** Descontinuação do motor de execução de scripts Lua. Toda a lógica de transformação de dados e nós de processamento passará a ser 100% nativa em Go. O objetivo é eliminar o *overhead* da ponte entre linguagens, garantindo maior *type-safety*, velocidade de execução e facilidade de *debug*.
-2.  **Arquitetura de Plugins via gRPC:** Refatoração da camada de `adapters`. Para evitar a necessidade de recompilar o *core engine* toda vez que um novo formato de entrada/saída (CSV, Excel, APIs) for suportado, os adaptadores operarão como plugins independentes comunicando-se com o motor principal via **gRPC** (inspirado no modelo de plugins da HashiCorp).
-3.  **Adoção do Go-Gota (Dataframes):** Substituição da implementação customizada de Dataframes (que dependia fortemente do pacote `reflect`) pela biblioteca `go-gota/gota`. Essa mudança delega a manipulação estrutural de dados para a ferramenta padrão da comunidade, eliminando gargalos de conversão de tipos em tempo de execução e otimizando a memória.
-4.  **Observabilidade e Resiliência (Context Propagation):** Implementação de logs estruturados (padrão JSON), exportação de métricas via Prometheus para monitoramento do tempo de execução das camadas do Grafo, e uso extensivo de `context.Context` ponta a ponta para garantir cancelamentos graciosos (*graceful shutdown*) e controle de *timeouts*.
-
----
-*Desenvolvido como projeto de conclusão de curso em Ciência da Computação (2025).*
+1.  **Transition to Native Nodes (Go-Only):** Discontinuation of the Lua script execution engine. All data transformation logic and processing nodes will become 100% native in Go. The goal is to eliminate the overhead of the language bridge, ensuring greater type-safety, execution speed, and debugging ease.
+2.  **Plugin Architecture via gRPC:** Refactoring of the `adapters` layer. To avoid the need to recompile the core engine every time a new input/output format (CSV, Excel, APIs) is supported, adapters will operate as independent plugins communicating with the main engine via **gRPC** (inspired by the HashiCorp plugin model).
+3.  **Adoption of Go-Gota (Dataframes):** Replacement of the custom DataFrame implementation (which relied heavily on the `reflect` package) with the `go-gota/gota` library. This change delegates structural data manipulation to the community-standard tool, eliminating runtime type conversion bottlenecks and optimizing memory.
+4.  **Observability and Resilience (Context Propagation):** Implementation of structured logging (JSON standard), metrics export via Prometheus for monitoring graph layer execution times, and extensive use of `context.Context` end-to-end to ensure graceful shutdowns and timeout control.
 
 ---
+*Developed as a Computer Science final year project (2025).*
 
+---
 # DataFrame Operations
 
 This document outlines the key operations you can perform with your custom `DataFrame` type, including `Filter`, `Apply`, and `Map`. These operations enable functional-style data transformation similar to those in Python's pandas, but written in Go.
