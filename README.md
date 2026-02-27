@@ -30,14 +30,14 @@ O projeto foi construído sob princípios de **Engenharia de Plataforma**, focan
 * `/core/df`: Implementação de Dataframes e motores de inferência de tipos de colunas.
 * `/core/adapters`: Conectores modulares para diferentes fontes de dados (CSV, Excel, Logs).
 
-## Roadmap de Evolução Técnica
+## Roadmap de Evolução Técnica (v1.0)
 
-Este projeto consolidou a prova de conceito de um motor de automação robusto. Os próximos passos focam em **Segurança de Runtime** e **Abstração de Interfaces**:
+Este projeto consolidou a prova de conceito (v0.1) de um motor de automação robusto baseado em DAGs. Para a arquitetura de uma versão voltada para produção (v1.0), as seguintes decisões de design (ADRs) foram mapeadas, focando em **Performance**, **Extensibilidade** e **Padronização**:
 
-1.  **Abstração de Executores (Go Interfaces):** Refatoração do motor para utilizar uma `Executor interface`, permitindo a criação de novos tipos de módulos nativos em Go (além dos módulos Lua atuais), aumentando a performance para tarefas computacionalmente intensas.
-2.  **Lua Sandboxing:** Implementação de isolamento para o ambiente Lua, restringindo o acesso a bibliotecas sensíveis do sistema (OS, IO) e definindo limites de memória e tempo de execução por script.
-3.  **Observabilidade Nativa:** Implementação de logs estruturados (padrão JSON) e exportação de métricas via Prometheus para monitoramento de saúde e tempo de execução dos nós.
-4.  **Context Propagation:** Uso extensivo de `context.Context` para permitir cancelamentos graciosos e gerenciamento de timeouts em pipelines de longa duração.
+1.  **Transição para Nodes Nativos (Go-Only):** Descontinuação do motor de execução de scripts Lua. Toda a lógica de transformação de dados e nós de processamento passará a ser 100% nativa em Go. O objetivo é eliminar o *overhead* da ponte entre linguagens, garantindo maior *type-safety*, velocidade de execução e facilidade de *debug*.
+2.  **Arquitetura de Plugins via gRPC:** Refatoração da camada de `adapters`. Para evitar a necessidade de recompilar o *core engine* toda vez que um novo formato de entrada/saída (CSV, Excel, APIs) for suportado, os adaptadores operarão como plugins independentes comunicando-se com o motor principal via **gRPC** (inspirado no modelo de plugins da HashiCorp).
+3.  **Adoção do Go-Gota (Dataframes):** Substituição da implementação customizada de Dataframes (que dependia fortemente do pacote `reflect`) pela biblioteca `go-gota/gota`. Essa mudança delega a manipulação estrutural de dados para a ferramenta padrão da comunidade, eliminando gargalos de conversão de tipos em tempo de execução e otimizando a memória.
+4.  **Observabilidade e Resiliência (Context Propagation):** Implementação de logs estruturados (padrão JSON), exportação de métricas via Prometheus para monitoramento do tempo de execução das camadas do Grafo, e uso extensivo de `context.Context` ponta a ponta para garantir cancelamentos graciosos (*graceful shutdown*) e controle de *timeouts*.
 
 ---
 *Desenvolvido como projeto de conclusão de curso em Ciência da Computação (2025).*
